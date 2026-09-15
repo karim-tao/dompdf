@@ -119,13 +119,9 @@ class TableCell extends Block
         } else {
             $style_height = $this->resolve_height($h);
         }
+
         $content_height = $this->_calculate_content_height();
-
-        if ($style_height === "auto") {
-            $style_height = 0.0;
-        }
-
-        $height = max($style_height, $content_height);
+        $height = max($style_height === "auto" ? 0.0 : $style_height, $content_height);
 
         $frame->set_content_height($content_height);
 
@@ -205,11 +201,11 @@ class TableCell extends Block
         // height: the specified one, or the fit-content size within the height
         // of the containing block, or of the page if it is undefined
         $block_size = $w - $left_space - $right_space;
-        $inline_size = $style->length_in_pt($style->height, $h);
+        $inline_size = $this->resolve_height($h);
 
         if ($inline_size === "auto") {
             [$min, $max] = $this->get_min_max_child_width();
-            $inline_size = max($min, min($max, (float) $h));
+            $inline_size = max($min, min($max, $h ?? (float) $frame->get_root()->get_containing_block("h")));
         }
 
         $inline_size = (float) $inline_size;
@@ -257,11 +253,7 @@ class TableCell extends Block
         $frame->set_content_height($inline_size);
 
         // Let the cellmap know our height
-        $cell_height = ($inline_size + $top_space + $bottom_space) / count($cells["rows"]);
-
-        foreach ($cells["rows"] as $i) {
-            $cellmap->set_row_height($i, $cell_height);
-        }
+        $cellmap->set_frame_height($frame, $inline_size + $top_space + $bottom_space);
     }
 
     public function get_min_max_content_width(): array
