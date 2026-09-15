@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="The height of a cell spanning several rows is distributed over them once they are laid out: rows tall enough on their own keep their height, the extra goes to the auto rows, not to the rows with a fixed height">
+<style>
+@page {
+    size: 400pt 500pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 10pt;
+}
+
+td {
+    padding: 2pt;
+    border: 1pt solid black;
+    vertical-align: top;
+}
+
+.fixed {
+    height: 1px;
+    background-color: lightblue;
+}
+
+.pink {
+    background-color: pink;
+}
+</style>
+</head>
+
+<body>
+    <table>
+        <tr><td>Test</td><td rowspan="4" class="pink">Test<br>More test<br>Even more test<br>More test still<br>Is there no end to tests?<br>Here is some more</td></tr>
+        <tr><td>Test</td></tr>
+        <tr><td>Test</td></tr>
+        <tr><td>Test</td></tr>
+        <tr><td>Test</td><td>Test</td></tr>
+    </table>
+    <table>
+        <tr><td rowspan="4" class="pink">one<br>two<br>three<br>four<br>five<br>six<br>seven<br>eight</td><td class="fixed">1px</td></tr>
+        <tr class="fixed"><td>1px row</td></tr>
+        <tr><td>auto</td></tr>
+        <tr><td>auto</td></tr>
+    </table>
+    <table>
+        <tr style="height: 40pt"><td>40pt row</td></tr>
+        <tr><td style="height: 30pt">30pt cell</td></tr>
+        <tr><td>auto</td></tr>
+    </table>
+</body>
+
+</html>
