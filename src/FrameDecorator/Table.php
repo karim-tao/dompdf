@@ -83,6 +83,14 @@ class Table extends AbstractFrameDecorator
         $this->_reflower->reset();
     }
 
+    public function reset_layout(): void
+    {
+        parent::reset_layout();
+        $this->_cellmap->reset();
+        $this->_headers = [];
+        $this->_footers = [];
+    }
+
     //........................................................................
 
     /**
