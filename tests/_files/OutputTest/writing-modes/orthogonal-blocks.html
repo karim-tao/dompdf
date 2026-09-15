@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="Blocks with a vertical writing mode are laid out in columns: from the right for vertical-rl and sideways-rl, from the left for vertical-lr and sideways-lr, reading bottom to top">
+<style>
+@page {
+    size: 400pt 400pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+.box {
+    display: inline-block;
+    vertical-align: top;
+    height: 150pt;
+    margin-right: 10pt;
+    padding: 2pt;
+    border: 1pt solid black;
+    background-color: lightblue;
+}
+
+.rl { writing-mode: vertical-rl; }
+.lr { writing-mode: vertical-lr; }
+.srl { writing-mode: sideways-rl; }
+.slr { writing-mode: sideways-lr; }
+
+p {
+    margin: 0 0 4pt;
+}
+
+.nested {
+    writing-mode: horizontal-tb;
+    border: 1pt solid black;
+    background-color: pink;
+}
+</style>
+</head>
+
+<body>
+    <div class="box rl"><p>First paragraph of a vertical-rl box.</p><p>Second paragraph.</p></div><div class="box lr"><p>First paragraph of a vertical-lr box.</p><p>Second paragraph.</p></div><div class="box srl">Sideways-rl reads top to bottom.</div><div class="box slr">Sideways-lr reads bottom to top.</div>
+    <br>
+    <div class="box rl"><p>Vertical parent</p><div class="nested">horizontal child</div><p>after the child</p></div><div class="box lr"><p>Vertical parent</p><div class="nested">horizontal child</div><p>after the child</p></div>
+    <div style="writing-mode: vertical-rl; border: 1pt solid black; background-color: lightblue; padding: 2pt">A block-level vertical box is shrink-wrapped</div>
+    <p>Text after the block-level box.</p>
+</body>
+
+</html>
