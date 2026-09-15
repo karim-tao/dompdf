@@ -19,6 +19,7 @@ use Dompdf\Frame;
 use Dompdf\Frame\Factory;
 use Dompdf\FrameDecorator\AbstractFrameDecorator;
 use Dompdf\FrameDecorator\Block;
+use Dompdf\FrameReflower\Block as BlockReflower;
 use Dompdf\Helpers;
 
 /**
@@ -94,11 +95,10 @@ abstract class AbstractFrameReflower
                 if ($parent !== $frame->get_root()) {
                     $parent_style = $parent->get_style();
                     $parent_padding_box = $parent->get_padding_box();
-                    //FIXME: an accurate measure of the positioned parent height
-                    //       is not possible until reflow has completed;
-                    //       we'll fall back to the parent's containing block,
-                    //       or to the page when that is undefined, which is
-                    //       wrong for auto-height parents
+                    // The height of a positioned parent with an automatic
+                    // height is not known until its reflow has completed. Fall
+                    // back to the parent's containing block for now; the parent
+                    // lays the frame out again once its height is known
                     if ($parent_style->height === "auto") {
                         $parent_containing_block = $parent->get_containing_block();
                         $containing_block_height = ($parent_containing_block["h"] ?? $frame->get_root()->get_containing_block("h")) -
@@ -108,6 +108,11 @@ abstract class AbstractFrameReflower
                                 $parent_style->border_top_width,
                                 $parent_style->border_bottom_width
                             ], $parent_containing_block["w"]);
+
+                        $parent_reflower = $parent->get_reflower();
+                        if ($parent_reflower instanceof BlockReflower) {
+                            $parent_reflower->add_absolute_frame($frame);
+                        }
                     } else {
                         $containing_block_height = $parent_padding_box["h"];
                     }
