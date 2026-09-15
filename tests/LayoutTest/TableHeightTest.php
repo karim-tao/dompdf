@@ -300,4 +300,12 @@ CSS;
         $this->assertEqualsWithDelta(90.0, $boxes["t"]["h"], 0.01);
         $this->assertEqualsWithDelta(90.0, $boxes["a"]["h"], 0.01);
     }
+
+    public function testRowspanExtraHeightGoesToThePercentageRowsFirst(): void
+    {
+        [$boxes] = $this->layout("<table><tr><td rowspan=\"2\" style=\"height: 100pt\"></td><td id=\"a\" style=\"height: 75%\">75%</td></tr><tr><td id=\"b\">auto</td></tr></table>");
+
+        $this->assertEqualsWithDelta(75.0, $boxes["a"]["h"], 0.01);
+        $this->assertEqualsWithDelta(25.0, $boxes["b"]["h"], 0.01);
+    }
 }

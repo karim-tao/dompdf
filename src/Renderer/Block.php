@@ -32,7 +32,7 @@ class Block extends AbstractRenderer
             // Margins should be fully resolved at this point
             $mt = $style->margin_top;
             $mb = $style->margin_bottom;
-            $h = $frame->get_containing_block("h") - $mt - $mb;
+            $h = ($frame->get_containing_block("h") ?? $frame->get_parent()->get_containing_block("h")) - $mt - $mb;
         }
 
         $border_box = [$x, $y, $w, $h];

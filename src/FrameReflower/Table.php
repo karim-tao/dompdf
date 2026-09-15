@@ -280,7 +280,7 @@ class Table extends AbstractFrameReflower
             $style->border_bottom_width
         ], $cb["w"]);
 
-        $height = $style->length_in_pt($style->height, $cb["h"]);
+        $height = $this->resolve_height($cb["h"]);
         $definite = $height !== "auto" && !$frame->is_split && !$frame->is_split_off;
 
         $cellmap = $frame->get_cellmap();
@@ -518,12 +518,10 @@ class Table extends AbstractFrameReflower
         // cell heights in a second pass, so give the cells nothing to resolve
         // against for now. The fragments of a table split across pages are
         // laid out once, so keep the containing block for them
-        if ($style->length_in_pt($style->height, $cb["h"]) !== "auto" && !$frame->is_split_off) {
+        if ($this->resolve_height($cb["h"]) !== "auto" && !$frame->is_split_off) {
             $h = 0;
-        } elseif (isset($cb["h"])) {
-            $h = $cb["h"];
         } else {
-            $h = null;
+            $h = $cb["h"];
         }
 
         $cellmap = $frame->get_cellmap();

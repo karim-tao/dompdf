@@ -57,7 +57,6 @@ class TableCell extends Block
             $w += $col["used-width"];
         }
 
-        //FIXME?
         $h = $frame->get_containing_block("h");
 
         $left_space = (float)$style->length_in_pt([$style->margin_left,
@@ -73,11 +72,11 @@ class TableCell extends Block
         $top_space = (float)$style->length_in_pt([$style->margin_top,
                 $style->padding_top,
                 $style->border_top_width],
-            $h);
+            $w);
         $bottom_space = (float)$style->length_in_pt([$style->margin_bottom,
                 $style->padding_bottom,
                 $style->border_bottom_width],
-            $h);
+            $w);
 
         $cb_w = $w - $left_space - $right_space;
         $style->set_used("width", $cb_w);
@@ -113,10 +112,14 @@ class TableCell extends Block
         if (Helpers::is_percent($style->height) && $table->get_style()->height !== "auto") {
             $style_height = 0.0;
         } else {
-            $style_height = (float) $style->length_in_pt($style->height, $h);
+            $style_height = $this->resolve_height($h);
+        }
+        $content_height = $this->_calculate_content_height();
+
+        if ($style_height === "auto") {
+            $style_height = 0.0;
         }
 
-        $content_height = $this->_calculate_content_height();
         $height = max($style_height, $content_height);
 
         $frame->set_content_height($content_height);
