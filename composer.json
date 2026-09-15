@@ -1,9 +1,12 @@
 {
-    "name": "dompdf/dompdf",
-    "type": "library",
+    "name": "karim-tao/dompdf",
     "description": "DOMPDF is a CSS 2.1 compliant HTML to PDF converter",
+    "type": "library",
     "homepage": "https://github.com/dompdf/dompdf",
     "license": "LGPL-2.1",
+    "replace": {
+        "dompdf/dompdf": "self.version"
+    },
     "authors": [
         {
             "name": "The Dompdf Community",
