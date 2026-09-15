@@ -212,10 +212,13 @@ class Block extends AbstractFrameDecorator
      */
     public function maximize_line_height(float $val, Frame $frame): void
     {
-        if ($val > $this->_line_boxes[$this->_cl]->h) {
-            $this->_line_boxes[$this->_cl]->tallest_frame = $frame;
-            $this->_line_boxes[$this->_cl]->h = $val;
+        $line = $this->_line_boxes[$this->_cl];
+
+        if ($val > $line->h) {
+            $line->tallest_frame = $frame;
         }
+
+        $line->fit($frame, $val);
     }
 
     /**
