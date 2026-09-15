@@ -78,6 +78,14 @@ class Cellmap
     protected $_rows;
 
     /**
+     * Heights required by the cells spanning several rows, by frame id,
+     * until the rows they span are laid out
+     *
+     * @var float[]
+     */
+    protected $_spanned_heights;
+
+    /**
      * 2D array of border specs
      *
      * @var array
@@ -141,6 +149,7 @@ class Cellmap
         }
 
         $this->_rows = [];
+        $this->_spanned_heights = [];
 
         $this->_borders = [];
 
@@ -445,6 +454,84 @@ class Cellmap
     }
 
     /**
+     * Let the cellmap know the height a cell requires.
+     *
+     * The height of a cell spanning a single row is the minimum height of
+     * its row. The height of a cell spanning several rows is distributed over
+     * them once they are all laid out, see `finish_row()`.
+     *
+     * @param Frame $frame
+     * @param float $height
+     */
+    public function set_frame_height(Frame $frame, float $height): void
+    {
+        $key = $frame->get_id();
+
+        // The row of the cell has been moved to the next page by a split
+        // while the cell was being laid out
+        if (!isset($this->_frames[$key])) {
+            return;
+        }
+
+        $rows = $this->_frames[$key]["rows"];
+
+        if (count($rows) === 1) {
+            $this->set_row_height(reset($rows), $height);
+        } else {
+            $this->_spanned_heights[$key] = $height;
+        }
+    }
+
+    /**
+     * Complete the layout of a row.
+     *
+     * The row is at least as high as its `height` property, the next row is
+     * positioned below it, and the height required by the cells spanning
+     * several rows which end at the row is distributed over them.
+     *
+     * @param Frame $row
+     */
+    public function finish_row(Frame $row): void
+    {
+        $key = $row->get_id();
+
+        if (!isset($this->_frames[$key])) {
+            return;
+        }
+
+        $style = $row->get_style();
+        $specified = $style->get_specified("height");
+        $height = Helpers::is_percent($specified) ? "auto" : $style->length_in_pt($specified);
+        $last = $this->_frames[$key]["rows"][0];
+
+        $this->set_row_height($last, $height === "auto" ? 0.0 : (float) $height);
+
+        foreach ($this->_spanned_heights as $key => $height) {
+            if (!isset($this->_frames[$key])) {
+                unset($this->_spanned_heights[$key]);
+                continue;
+            }
+
+            $rows = $this->_frames[$key]["rows"];
+
+            if (max($rows) !== $last) {
+                continue;
+            }
+
+            unset($this->_spanned_heights[$key]);
+
+            $content_height = 0.0;
+            foreach ($rows as $i) {
+                $content_height += $this->_rows[$i]["height"] ?? 0;
+            }
+
+            if ($height > $content_height) {
+                $this->distribute_height($height - $content_height, $rows);
+            }
+        }
+    }
+
+    /**
      * Distribute extra height over rows.
      *
      * Rows with a percentage height get their share of the reference height
@@ -455,9 +542,10 @@ class Cellmap
      *
      * https://www.w3.org/TR/css-tables-3/#distributing-height-to-rows
      *
-     * @param float $extra The height to distribute, in addition to the height of the rows
+     * @param float      $extra The height to distribute, in addition to the height of the rows
+     * @param int[]|null $rows  The rows to distribute it over, all of them by default
      */
-    public function distribute_height(float $extra): void
+    public function distribute_height(float $extra, ?array $rows = null): void
     {
         if ($extra <= 0) {
             return;
@@ -478,7 +566,7 @@ class Cellmap
 
             $index = reset($arr["rows"]);
 
-            if (!isset($this->_rows[$index])) {
+            if (!isset($this->_rows[$index]) || ($rows !== null && !in_array($index, $rows, true))) {
                 continue;
             }
 
@@ -545,8 +633,9 @@ class Cellmap
 
         // Move the row groups and rows already laid out there, along with
         // their cells: the groups first, so that the rows only move by what
-        // their group did not
-        foreach (["table-row-group", "table-header-group", "table-footer-group", "table-row"] as $display) {
+        // their group did not, and last the cells of the row being laid out,
+        // which is positioned after them
+        foreach (["table-row-group", "table-header-group", "table-footer-group", "table-row", "table-cell"] as $display) {
             foreach ($this->_frames as $arr) {
                 $frame = $arr["frame"];
 

@@ -223,4 +223,35 @@ CSS;
         $this->assertEqualsWithDelta(100.0, $boxes["a"]["h"], 0.01);
         $this->assertEqualsWithDelta(100.0, $boxes["b"]["h"], 0.01);
     }
+
+    public function testRowspanCellFittingItsRowsLeavesThemAlone(): void
+    {
+        [$boxes] = $this->layout("<table><tr><td id=\"a\">Test</td><td rowspan=\"4\">1<br>2<br>3<br>4</td></tr><tr><td id=\"b\">Test</td></tr><tr><td id=\"c\">Test</td></tr><tr><td id=\"d\">Test</td></tr></table>");
+
+        $line = $this->lineHeight();
+
+        foreach (["a", "b", "c", "d"] as $id) {
+            $this->assertEqualsWithDelta($line, $boxes[$id]["h"], 0.01);
+        }
+    }
+
+    public function testRowspanExtraHeightGoesToTheAutoRowsNotToTheFixedOnes(): void
+    {
+        [$boxes] = $this->layout("<table><tr><td rowspan=\"4\">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8</td><td id=\"a\" style=\"height: 1px\">1px</td></tr><tr style=\"height: 1px\"><td id=\"b\">1px</td></tr><tr><td id=\"c\">auto</td></tr><tr><td id=\"d\">auto</td></tr></table>");
+
+        $line = $this->lineHeight();
+        $this->assertEqualsWithDelta($line, $boxes["a"]["h"], 0.01);
+        $this->assertEqualsWithDelta($line, $boxes["b"]["h"], 0.01);
+        $this->assertEqualsWithDelta(3 * $line, $boxes["c"]["h"], 0.01);
+        $this->assertEqualsWithDelta(3 * $line, $boxes["d"]["h"], 0.01);
+        $this->assertEqualsWithDelta($boxes["c"]["y"] + 3 * $line, $boxes["d"]["y"], 0.01);
+    }
+
+    public function testRowHeightIsAMinimum(): void
+    {
+        [$boxes] = $this->layout("<table><tr id=\"a\" style=\"height: 40pt\"><td>40pt</td></tr><tr id=\"b\" style=\"height: 5pt\"><td>5pt</td></tr></table>");
+
+        $this->assertEqualsWithDelta(40.0, $boxes["a"]["h"], 0.01);
+        $this->assertEqualsWithDelta($this->lineHeight(), $boxes["b"]["h"], 0.01);
+    }
 }
