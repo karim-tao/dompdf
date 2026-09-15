@@ -6,8 +6,10 @@
  */
 namespace Dompdf\FrameReflower;
 
+use Dompdf\FrameDecorator\AbstractFrameDecorator;
 use Dompdf\FrameDecorator\Block as BlockFrameDecorator;
 use Dompdf\FrameDecorator\Table as TableFrameDecorator;
+use Dompdf\FrameDecorator\TableCell as TableCellFrameDecorator;
 use Dompdf\Helpers;
 
 /**
@@ -30,6 +32,15 @@ class Table extends AbstractFrameReflower
      * @var array
      */
     protected $_state;
+
+    /**
+     * The indexes of the rows that received a share of the extra height of the
+     * table, whose cells resolve the percentage heights of their content
+     * against their own height
+     *
+     * @var array<int, bool>
+     */
+    protected $_stretched_rows = [];
 
     /**
      * Table constructor.
@@ -261,6 +272,7 @@ class Table extends AbstractFrameReflower
         $cb = $frame->get_containing_block();
 
         $height = $style->length_in_pt($style->height, $cb["h"]);
+        $definite = $height !== "auto" && !$frame->is_split && !$frame->is_split_off;
 
         $cellmap = $frame->get_cellmap();
         $rows = $cellmap->get_rows();
@@ -281,6 +293,8 @@ class Table extends AbstractFrameReflower
         $max_height = $this->resolve_max_height($cb["h"]);
         $height = Helpers::clamp($height, $min_height, $max_height);
 
+        $this->_stretched_rows = [];
+
         // Use the content height or the height value, whichever is greater. A
         // table split across pages keeps the content height of its fragments.
         // Rows cannot be split across pages, so the rows of a table which would
@@ -288,10 +302,27 @@ class Table extends AbstractFrameReflower
         if ($height <= $content_height || $frame->is_split || $frame->is_split_off) {
             $height = $content_height;
         } elseif ($this->_fits_on_page($height)) {
-            $cellmap->distribute_height($height - $content_height);
+            foreach ($cellmap->distribute_height($height - $content_height) as $index => $grant) {
+                if ($grant > 0) {
+                    $this->_stretched_rows[$index] = true;
+                }
+            }
         }
 
         $cellmap->assign_frame_heights();
+
+        if ($definite) {
+            foreach ($frame->get_children() as $group) {
+                $this->_update_frame($group);
+            }
+
+            $content_height = 0.0;
+            foreach ($cellmap->get_rows() as $r) {
+                $content_height += $r["height"];
+            }
+
+            $height = max($height, $content_height);
+        }
 
         return $height;
     }
@@ -326,6 +357,48 @@ class Table extends AbstractFrameReflower
             + $height;
 
         return Helpers::lengthLessOrEqual($bottom, $bottom_page_edge);
+    }
+
+    /**
+     * Move a row group or row to the position stored in the cell map and give
+     * it the height of its rows; reflow a cell against its final height, so
+     * that percentage heights of its children resolve against the cell.
+     *
+     * @param AbstractFrameDecorator $frame
+     */
+    protected function _update_frame(AbstractFrameDecorator $frame): void
+    {
+        $cellmap = $this->_frame->get_cellmap();
+
+        if (!$cellmap->frame_exists_in_cellmap($frame)) {
+            return;
+        }
+
+        if ($frame instanceof TableCellFrameDecorator) {
+            $frame->set_cell_height($cellmap->get_frame_height($frame));
+            $cb = $frame->get_parent()->get_containing_block();
+
+            // Percentage heights of the content resolve against the height
+            // of the cell when its row was stretched. The other cells are as
+            // high as their content, and keep resolving them against the
+            // containing block of the table
+            $stretched = array_intersect_key($this->_stretched_rows, array_flip($cellmap->get_spanned_cells($frame)["rows"])) !== [];
+            $height = $stretched ? $frame->get_style()->height : $this->_frame->get_containing_block("h");
+
+            $frame->reset_layout();
+            $cellmap->apply_cell_style($frame);
+            $frame->set_containing_block($cb["x"], $cb["y"], $cb["w"], $height);
+            $frame->reflow();
+            $frame->set_cell_height($cellmap->get_frame_height($frame));
+            return;
+        }
+
+        $frame->set_position($cellmap->get_frame_position($frame));
+        $frame->get_style()->set_used("height", $cellmap->get_frame_height($frame));
+
+        foreach ($frame->get_children() as $child) {
+            $this->_update_frame($child);
+        }
     }
 
     /**
@@ -428,7 +501,15 @@ class Table extends AbstractFrameReflower
         $content_x = $x + $offset_x;
         $content_y = $y + $offset_y;
 
-        if (isset($cb["h"])) {
+        // The percentage heights of the rows and cells of a table with a
+        // definite height are resolved by distributing its height over the
+        // rows, and the ones of the content of the cells against the final
+        // cell heights in a second pass, so give the cells nothing to resolve
+        // against for now. The fragments of a table split across pages are
+        // laid out once, so keep the containing block for them
+        if ($style->length_in_pt($style->height, $cb["h"]) !== "auto" && !$frame->is_split_off) {
+            $h = 0;
+        } elseif (isset($cb["h"])) {
             $h = $cb["h"];
         } else {
             $h = null;

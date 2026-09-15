@@ -63,6 +63,15 @@ class Block extends AbstractFrameDecorator
         $this->dangling_markers = [];
     }
 
+    public function reset_layout(): void
+    {
+        parent::reset_layout();
+
+        $this->_line_boxes = [new LineBox($this)];
+        $this->_cl = 0;
+        $this->dangling_markers = [];
+    }
+
     /**
      * @return LineBox
      */
