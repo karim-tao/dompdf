@@ -780,6 +780,10 @@ class Block extends AbstractFrameReflower
      */
     function reflow(?BlockFrameDecorator $block = null)
     {
+        if ($this->is_orthogonal()) {
+            $this->reflow_orthogonal($block);
+            return;
+        }
 
         // Check if a page break is forced
         $page = $this->_frame->get_root();
@@ -918,8 +922,208 @@ class Block extends AbstractFrameReflower
         }
     }
 
+    /**
+     * Whether the frame establishes an orthogonal flow, i.e. the lines of its
+     * writing mode are rotated relative to the ones of its parent.
+     *
+     * https://www.w3.org/TR/css-writing-modes-4/#orthogonal-flows
+     *
+     * @return bool
+     */
+    public function is_orthogonal(): bool
+    {
+        $parent = $this->_frame->get_parent();
+        $parent_angle = $parent !== null ? $parent->get_style()->writing_mode_angle() : 0;
+
+        return $this->_frame->get_style()->writing_mode_angle() !== $parent_angle;
+    }
+
+    /**
+     * Lay out a box whose writing mode is orthogonal to the one of its parent.
+     *
+     * The content is laid out horizontally, with the inline size of the box as
+     * width, and rotated into place by the renderer. The physical box gets the
+     * block size of the content as width and the inline size as height.
+     *
+     * https://www.w3.org/TR/css-writing-modes-4/#orthogonal-flows
+     *
+     * @param BlockFrameDecorator|null $block
+     */
+    protected function reflow_orthogonal(?BlockFrameDecorator $block): void
+    {
+        $frame = $this->_frame;
+        $page = $frame->get_root();
+        $page->check_forced_page_break($frame);
+
+        if ($page->is_full()) {
+            return;
+        }
+
+        $this->determine_absolute_containing_block();
+        $this->_set_content();
+
+        if ($block && $frame->is_in_flow()) {
+            $frame->inherit_dangling_markers($block);
+        }
+
+        $this->_collapse_margins();
+
+        $style = $frame->get_style();
+        $cb = $frame->get_containing_block();
+
+        // The inline size is the physical height. When auto, it is the
+        // fit-content size within the block size of the containing block, for
+        // which dompdf provides the page height as fallback, like the initial
+        // containing block of the specification
+        // https://www.w3.org/TR/css-writing-modes-4/#orthogonal-auto
+        $inline_size = $style->length_in_pt($style->height, $cb["h"]);
+
+        if ($inline_size === "auto") {
+            [$min, $max] = $this->get_min_max_child_width();
+            $inline_size = max($min, min($max, (float) $cb["h"]));
+        }
+
+        $inline_size = Helpers::clamp((float) $inline_size, $this->resolve_min_height($cb["h"]), $this->resolve_max_height($cb["h"]));
+
+        $margin_left = $style->length_in_pt($style->margin_left, $cb["w"]);
+        $margin_top = $style->length_in_pt($style->margin_top, $cb["w"]);
+        $margin_bottom = $style->length_in_pt($style->margin_bottom, $cb["w"]);
+
+        // The block size is the physical width
+        $block_size = $style->length_in_pt($style->width, $cb["w"]);
+
+        // Lay the content out horizontally, with the inline size as width
+        $style->set_used("width", $inline_size);
+        $style->set_used("margin_left", $margin_left !== "auto" ? $margin_left : 0.0);
+        $style->set_used("margin_top", $margin_top !== "auto" ? $margin_top : 0.0);
+
+        $frame->position();
+        [$x, $y] = $frame->get_position();
+
+        $cb_x = $x + (float) $style->length_in_pt([$style->margin_left, $style->border_left_width, $style->padding_left], $cb["w"]);
+        $cb_y = $y + (float) $style->length_in_pt([$style->margin_top, $style->border_top_width, $style->padding_top], $cb["w"]);
+
+        $line_box = $frame->get_current_line_box();
+        $line_box->y = $cb_y;
+        $line_box->get_float_offsets();
+
+        // A rotated box cannot be split across pages
+        $page->table_reflow_start();
+
+        foreach ($frame->get_children() as $child) {
+            $child->set_containing_block($cb_x, $cb_y, $inline_size, $block_size !== "auto" ? $block_size : $cb["h"]);
+            $this->process_clear($child);
+            $child->reflow($frame);
+            $this->process_float($child, $cb_x, $inline_size);
+        }
+
+        $page->table_reflow_end();
+
+        $this->_text_align();
+        $this->vertical_align();
+
+        foreach ($frame->get_children() as $child) {
+            $this->position_relative($child);
+        }
+
+        if ($block_size === "auto") {
+            $block_size = $this->_calculate_content_height();
+        }
+
+        $block_size = Helpers::clamp((float) $block_size, $this->resolve_min_width($cb["w"]), $this->resolve_max_width($cb["w"]));
+
+        // The physical box: the block size as width, the inline size as height
+        $values = $this->_calculate_width($block_size);
+        $style->set_used("width", $values["width"]);
+        $style->set_used("margin_left", $values["margin_left"]);
+        $style->set_used("margin_right", $values["margin_right"]);
+        $style->set_used("left", $values["left"]);
+        $style->set_used("right", $values["right"]);
+        $style->set_used("height", $inline_size);
+        $style->set_used("margin_bottom", $margin_bottom !== "auto" ? $margin_bottom : 0.0);
+        $style->set_used("top", $style->length_in_pt($style->top, $cb["h"]));
+        $style->set_used("bottom", $style->length_in_pt($style->bottom, $cb["h"]));
+
+        // In vertical-lr the lines stack from left to right: reverse their
+        // order along the block axis before the rotation
+        if ($style->writing_mode === "vertical-lr") {
+            $this->_mirror_lines($frame, $cb_y, $values["width"]);
+        }
+
+        if ($block && $frame->is_in_flow()) {
+            $block->add_frame_to_line($frame);
+
+            if ($frame->is_block_level()) {
+                $block->add_line();
+            }
+        }
+    }
+
+    /**
+     * Reverse the order of the lines of a block along its block axis, and of
+     * the lines of the nested blocks sharing its writing mode.
+     *
+     * @param BlockFrameDecorator $frame
+     * @param float $top    Start of the block axis
+     * @param float $extent Length of the block axis
+     */
+    protected function _mirror_lines(BlockFrameDecorator $frame, float $top, float $extent): void
+    {
+        foreach ($frame->get_line_boxes() as $line) {
+            $offset = $extent - 2 * ($line->y - $top) - $line->h;
+            $moved = [];
+
+            // Move the line-level frames, whose descendants follow: the line
+            // holds the text frames, not the inline frames containing them
+            foreach ($line->get_frames() as $child) {
+                while ($child->get_parent() !== $frame) {
+                    $child = $child->get_parent();
+                }
+
+                if (!isset($moved[$child->get_id()])) {
+                    $child->move(0, $offset);
+                    $this->_move_line_boxes($child, $offset);
+                    $moved[$child->get_id()] = true;
+                }
+            }
+
+            $line->y += $offset;
+
+            foreach ($line->get_frames() as $child) {
+                if ($child instanceof BlockFrameDecorator && !$child->get_reflower()->is_orthogonal()) {
+                    $box = $child->get_content_box();
+                    $this->_mirror_lines($child, $box["y"], $box["h"]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Move the line boxes of a frame and of its descendants, which do not
+     * follow the frames when these are moved.
+     *
+     * @param AbstractFrameDecorator $frame
+     * @param float $offset
+     */
+    protected function _move_line_boxes(AbstractFrameDecorator $frame, float $offset): void
+    {
+        if ($frame instanceof BlockFrameDecorator) {
+            foreach ($frame->get_line_boxes() as $line) {
+                $line->y += $offset;
+            }
+        }
+
+        foreach ($frame->get_children() as $child) {
+            $this->_move_line_boxes($child, $offset);
+        }
+    }
+
     public function get_min_max_content_width(): array
     {
+        if ($this->is_orthogonal()) {
+            return $this->get_orthogonal_min_max_content_width();
+        }
+
         // TODO: While the containing block is not set yet on the frame, it can
         // already be determined in some cases due to fixed dimensions on the
         // ancestor forming the containing block. In such cases, percentage
@@ -938,6 +1142,40 @@ class Block extends AbstractFrameReflower
         }
 
         // Handle min/max width style properties
+        $min_width = $this->resolve_min_width(null);
+        $max_width = $this->resolve_max_width(null);
+        $min = Helpers::clamp($min, $min_width, $max_width);
+        $max = Helpers::clamp($max, $min_width, $max_width);
+
+        return [$min, $max];
+    }
+    /**
+     * The width of an orthogonal box is its block size, which depends on the
+     * number of lines its content takes within the block size of the
+     * containing block. That is not known yet, so estimate it with the height
+     * of the initial containing block, as the specification does for
+     * orthogonal flows.
+     *
+     * https://www.w3.org/TR/css-writing-modes-4/#orthogonal-layout
+     *
+     * @return array
+     */
+    protected function get_orthogonal_min_max_content_width(): array
+    {
+        $style = $this->_frame->get_style();
+        $width = $style->width;
+
+        if ($width !== "auto" && !Helpers::is_percent($width)) {
+            $min = $max = (float) $style->length_in_pt($width, 0);
+        } else {
+            [, $inline_max] = $this->get_min_max_child_width();
+            $available = (float) $this->_frame->get_root()->get_containing_block("h");
+            $lines = $available > 0 ? max(1, (int) ceil($inline_max / $available)) : 1;
+            $font_height = $this->get_dompdf()->getFontMetrics()->getFontHeight($style->font_family, $style->font_size);
+            $line_height = $style->line_height / ($style->font_size > 0 ? $style->font_size : 1) * $font_height;
+            $min = $max = $lines * $line_height;
+        }
+
         $min_width = $this->resolve_min_width(null);
         $max_width = $this->resolve_max_width(null);
         $min = Helpers::clamp($min, $min_width, $max_width);
