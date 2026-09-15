@@ -137,4 +137,28 @@ CSS;
         $this->assertGreaterThan($boxes["h"]["w"], $boxes["h"]["h"]);
         $this->assertEqualsWithDelta($boxes["horizontal child"]["w"], $boxes["h"]["h"], 0.01);
     }
+
+    public function testUprightGlyphsAdvanceByTheFontHeight(): void
+    {
+        $boxes = $this->layout("<span class=\"box\" id=\"h\">ABC</span> <span class=\"box\" style=\"writing-mode: vertical-rl; text-orientation: upright\">CBA</span>");
+
+        $lineHeight = $boxes["h"]["h"];
+        $this->assertEqualsWithDelta(3 * $lineHeight, $boxes["CBA"]["w"], 0.01);
+    }
+
+    public function testMixedOrientationSetsUprightSymbolsOnly(): void
+    {
+        $boxes = $this->layout("<span class=\"box\" id=\"h\">A</span> <span class=\"box\" style=\"writing-mode: vertical-rl\">A±</span>");
+
+        $lineHeight = $boxes["h"]["h"];
+        $letter = $boxes["h"]["w"];
+        $this->assertEqualsWithDelta($letter + $lineHeight, $boxes["A±"]["w"], 0.01);
+    }
+
+    public function testSidewaysModesIgnoreTextOrientation(): void
+    {
+        $boxes = $this->layout("<span class=\"box\" id=\"h\">ABC</span> <span class=\"box\" style=\"writing-mode: sideways-lr; text-orientation: upright\">CBA</span>");
+
+        $this->assertEqualsWithDelta($boxes["h"]["w"], $boxes["CBA"]["w"], 0.01);
+    }
 }

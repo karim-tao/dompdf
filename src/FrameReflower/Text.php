@@ -11,6 +11,7 @@ use Dompdf\FontMetrics;
 use Dompdf\FrameDecorator\Block as BlockFrameDecorator;
 use Dompdf\FrameDecorator\Inline as InlineFrameDecorator;
 use Dompdf\FrameDecorator\Text as TextFrameDecorator;
+use Dompdf\VerticalFontMetrics;
 use Dompdf\Helpers;
 
 /**
@@ -54,6 +55,11 @@ class Text extends AbstractFrameReflower
      * @var FontMetrics
      */
     private $fontMetrics;
+
+    /**
+     * @var VerticalFontMetrics[]
+     */
+    private $verticalFontMetrics = [];
 
     /**
      * @param TextFrameDecorator $frame
@@ -596,6 +602,19 @@ class Text extends AbstractFrameReflower
      */
     public function getFontMetrics()
     {
-        return $this->fontMetrics;
+        $style = $this->_frame->get_style();
+
+        // Text with upright glyphs is measured by their vertical advance
+        if (!$style->has_upright_text()) {
+            return $this->fontMetrics;
+        }
+
+        $orientation = $style->text_orientation;
+
+        if (!isset($this->verticalFontMetrics[$orientation])) {
+            $this->verticalFontMetrics[$orientation] = new VerticalFontMetrics($this->fontMetrics, $orientation);
+        }
+
+        return $this->verticalFontMetrics[$orientation];
     }
 }
