@@ -260,7 +260,7 @@ class Table extends AbstractFrameReflower
         $style = $frame->get_style();
         $cb = $frame->get_containing_block();
 
-        $height = $style->length_in_pt($style->height, $cb["h"]);
+        $height = $this->resolve_height($cb["h"]);
 
         $cellmap = $frame->get_cellmap();
         $cellmap->assign_frame_heights();

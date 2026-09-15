@@ -669,6 +669,9 @@ class Frame
     }
 
     /**
+     * Set the containing block. Its height is undefined (`null`) while it
+     * depends on the content of the block.
+     *
      * @param float|float[]|null $x
      * @param float|null $y
      * @param float|null $w
@@ -697,7 +700,7 @@ class Frame
             $this->_containing_block["w"] = $w;
         }
 
-        if (is_numeric($h)) {
+        if (is_numeric($h) || $h === null) {
             $this->_containing_block["h"] = $h;
         }
     }
