@@ -8,6 +8,7 @@ namespace Dompdf\Renderer;
 
 use Dompdf\Adapter\CPDF;
 use Dompdf\Frame;
+use Dompdf\FrameDecorator\Text as TextFrameDecorator;
 
 /**
  * Renders text frames
@@ -72,9 +73,13 @@ class Text extends AbstractRenderer
           $text
         );*/
 
-        $this->_canvas->text($x, $y, $text,
-            $font, $size,
-            $style->color, $word_spacing, $letter_spacing);
+        if ($style->has_upright_text()) {
+            $this->_render_upright($frame, $x, $y, $text, $font, $size, $style->color, $word_spacing, $letter_spacing);
+        } else {
+            $this->_canvas->text($x, $y, $text,
+                $font, $size,
+                $style->color, $word_spacing, $letter_spacing);
+        }
 
         $line = $frame->get_containing_line();
 
@@ -156,6 +161,45 @@ class Text extends AbstractRenderer
             $fontMetrics = $this->_dompdf->getFontMetrics();
             $textWidth = $fontMetrics->getTextWidth($text, $font, $size, $word_spacing, $letter_spacing);
             $this->debugLayout([$x, $y, $textWidth, $frame_font_size], "orange", [0.5, 0.5]);
+        }
+    }
+    /**
+     * Render text of a vertical writing mode whose glyphs may be upright: the
+     * upright ones are drawn one by one, rotated counter-clockwise so that they
+     * stand upright once the line is rotated clockwise, centered in a slot as
+     * long as their vertical advance.
+     *
+     * https://www.w3.org/TR/css-writing-modes-4/#text-orientation
+     *
+     * @param TextFrameDecorator $frame
+     * @param float $x
+     * @param float $y
+     * @param string $text
+     * @param string $font
+     * @param float $size
+     * @param array $color
+     * @param float $word_spacing
+     * @param float $letter_spacing
+     */
+    protected function _render_upright(TextFrameDecorator $frame, float $x, float $y, string $text, $font, float $size, array $color, float $word_spacing, float $letter_spacing): void
+    {
+        $fontMetrics = $this->_dompdf->getFontMetrics();
+        $verticalFontMetrics = $frame->get_reflower()->getFontMetrics();
+        $height = $fontMetrics->getFontHeight($font, $size);
+        $baseline = $fontMetrics->getFontBaseline($font, $size);
+
+        foreach ($verticalFontMetrics->getRuns($text) as [$run, $upright]) {
+            if (!$upright) {
+                $this->_canvas->text($x, $y, $run, $font, $size, $color, $word_spacing, $letter_spacing);
+                $x += $fontMetrics->getTextWidth($run, $font, $size, $word_spacing, $letter_spacing);
+                continue;
+            }
+
+            foreach (mb_str_split($run, 1, "UTF-8") as $char) {
+                $width = $fontMetrics->getTextWidth($char, $font, $size);
+                $this->_canvas->text($x + $baseline, $y + ($height + $width) / 2 - $baseline, $char, $font, $size, $color, 0.0, 0.0, -90);
+                $x += $verticalFontMetrics->getUprightAdvance($font, $size, $letter_spacing);
+            }
         }
     }
 }

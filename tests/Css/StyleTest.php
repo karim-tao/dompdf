@@ -542,6 +542,9 @@ class StyleTest extends TestCase
 
         $style->set_prop("-webkit-writing-mode", "vertical-rl");
         $this->assertSame("vertical-rl", $style->writing_mode);
+
+        $style->set_prop("-webkit-text-orientation", "upright");
+        $this->assertSame("upright", $style->text_orientation);
     }
 
     public function testWritingModeInherited(): void
@@ -552,9 +555,11 @@ class StyleTest extends TestCase
         $style = new Style($sheet);
 
         $parentStyle->set_prop("writing_mode", "sideways-lr");
+        $parentStyle->set_prop("text_orientation", "upright");
         $style->inherit($parentStyle);
 
         $this->assertSame("sideways-lr", $style->writing_mode);
+        $this->assertSame("upright", $style->text_orientation);
     }
 
     public static function writingModeAngleProvider(): array
@@ -582,16 +587,70 @@ class StyleTest extends TestCase
         $this->assertSame($expected, $style->writing_mode_angle());
     }
 
+    public static function textOrientationProvider(): array
+    {
+        return [
+            // Keywords
+            ["mixed", "mixed"],
+            ["upright", "upright"],
+            ["sideways", "sideways"],
+
+            // Legacy alias
+            ["sideways-right", "sideways"],
+
+            // Case variations
+            ["UPRIGHT", "upright"],
+
+            // Invalid values
+            ["sideways-left", "mixed"],
+            ["none", "mixed"]
+        ];
+    }
+
     /**
      * @dataProvider textOrientationProvider
      */
     #[\PHPUnit\Framework\Attributes\DataProvider('textOrientationProvider')]
+    public function testTextOrientation(string $value, string $expected): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $style = new Style($sheet);
+
+        $style->set_prop("text_orientation", $value);
+        $this->assertSame($expected, $style->text_orientation);
+    }
+
+    public static function uprightTextProvider(): array
+    {
+        return [
+            // Upright glyphs only occur in vertical-rl and vertical-lr, and
+            // not with text-orientation: sideways
+            ["horizontal-tb", "mixed", false],
+            ["horizontal-tb", "upright", false],
+            ["vertical-rl", "mixed", true],
+            ["vertical-rl", "upright", true],
+            ["vertical-rl", "sideways", false],
+            ["vertical-lr", "mixed", true],
+            ["sideways-rl", "upright", false],
+            ["sideways-lr", "upright", false]
+        ];
+    }
 
     /**
      * @dataProvider uprightTextProvider
      */
     #[\PHPUnit\Framework\Attributes\DataProvider('uprightTextProvider')]
+    public function testHasUprightText(string $writingMode, string $textOrientation, bool $expected): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $style = new Style($sheet);
 
+        $style->set_prop("writing_mode", $writingMode);
+        $style->set_prop("text_orientation", $textOrientation);
+        $this->assertSame($expected, $style->has_upright_text());
+    }
     public static function fontWeightProvider(): array
     {
         return [
