@@ -122,15 +122,7 @@ class TableCell extends Block
         $frame->set_content_height($content_height);
 
         // Let the cellmap know our height
-        $cell_height = $height / count($cells["rows"]);
-
-        if ($style_height <= $height) {
-            $cell_height += $top_space + $bottom_space;
-        }
-
-        foreach ($cells["rows"] as $i) {
-            $cellmap->set_row_height($i, $cell_height);
-        }
+        $cellmap->set_frame_height($frame, $height + $top_space + $bottom_space);
 
         $style->set_used("height", $height);
 

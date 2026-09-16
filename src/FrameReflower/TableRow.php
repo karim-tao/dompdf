@@ -69,6 +69,7 @@ class TableRow extends AbstractFrameReflower
             throw new Exception("Parent table not found for table row");
         }
         $cellmap = $table->get_cellmap();
+        $cellmap->finish_row($frame);
 
         $style->set_used("width", $cellmap->get_frame_width($frame));
         $style->set_used("height", $cellmap->get_frame_height($frame));
