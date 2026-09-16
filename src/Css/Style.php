@@ -483,7 +483,8 @@ class Style
         "_dompdf_background_image_resolution" => "background_image_resolution",
         "_dompdf_image_resolution"            => "image_resolution",
         "_webkit_transform"                   => "transform",
-        "_webkit_transform_origin"            => "transform_origin"
+        "_webkit_transform_origin"            => "transform_origin",
+        "_webkit_writing_mode"                => "writing_mode"
     ];
 
     /**
@@ -547,7 +548,8 @@ class Style
         "white_space" => true,
         "widows" => true,
         "word_break" => true,
-        "word_spacing" => true
+        "word_spacing" => true,
+        "writing_mode" => true
     ];
 
     /**
@@ -901,6 +903,7 @@ class Style
             $d["width"] = "auto";
             $d["word_break"] = "normal";
             $d["word_spacing"] = "normal";
+            $d["writing_mode"] = "horizontal-tb";
             $d["z_index"] = "auto";
 
             // CSS3
@@ -4291,6 +4294,59 @@ class Style
         }
 
         return [$l1, $l2];
+    }
+
+    /**
+     * @link https://www.w3.org/TR/css-writing-modes-4/#block-flow
+     */
+    protected function _compute_writing_mode(string $val)
+    {
+        $val = strtolower($val);
+
+        switch ($val) {
+            case "horizontal-tb":
+            case "vertical-rl":
+            case "vertical-lr":
+            case "sideways-rl":
+            case "sideways-lr":
+                return $val;
+
+            // Legacy SVG 1.1 values
+            // https://www.w3.org/TR/css-writing-modes-4/#svg-writing-mode
+            case "lr":
+            case "lr-tb":
+            case "rl":
+            case "rl-tb":
+                return "horizontal-tb";
+            case "tb":
+            case "tb-rl":
+                return "vertical-rl";
+            case "tb-lr":
+                return "vertical-lr";
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * The angle, in degrees, by which the lines of the writing mode are rotated
+     * relative to `horizontal-tb`: 90 for the modes flowing top to bottom, -90
+     * for `sideways-lr`, which flows bottom to top.
+     *
+     * @return int
+     */
+    public function writing_mode_angle(): int
+    {
+        switch ($this->__get("writing_mode")) {
+            case "vertical-rl":
+            case "vertical-lr":
+            case "sideways-rl":
+                return 90;
+            case "sideways-lr":
+                return -90;
+            default:
+                return 0;
+        }
     }
 
     /**
