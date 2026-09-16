@@ -19,6 +19,7 @@ use Dompdf\Frame;
 use Dompdf\Frame\Factory;
 use Dompdf\FrameDecorator\AbstractFrameDecorator;
 use Dompdf\FrameDecorator\Block;
+use Dompdf\Helpers;
 
 /**
  * Base reflower class
@@ -96,10 +97,11 @@ abstract class AbstractFrameReflower
                     //FIXME: an accurate measure of the positioned parent height
                     //       is not possible until reflow has completed;
                     //       we'll fall back to the parent's containing block,
-                    //       which is wrong for auto-height parents
+                    //       or to the page when that is undefined, which is
+                    //       wrong for auto-height parents
                     if ($parent_style->height === "auto") {
                         $parent_containing_block = $parent->get_containing_block();
-                        $containing_block_height = $parent_containing_block["h"] -
+                        $containing_block_height = ($parent_containing_block["h"] ?? $frame->get_root()->get_containing_block("h")) -
                             (float)$parent_style->length_in_pt([
                                 $parent_style->margin_top,
                                 $parent_style->margin_bottom,
@@ -277,9 +279,9 @@ abstract class AbstractFrameReflower
 
         if ($style->position === "relative") {
             $cb = $frame->get_containing_block();
-            $top = $style->length_in_pt($style->top, $cb["h"]);
+            $top = $style->length_in_pt($style->top, $cb["h"] ?? 0);
             $right = $style->length_in_pt($style->right, $cb["w"]);
-            $bottom = $style->length_in_pt($style->bottom, $cb["h"]);
+            $bottom = $style->length_in_pt($style->bottom, $cb["h"] ?? 0);
             $left = $style->length_in_pt($style->left, $cb["w"]);
 
             // FIXME RTL case:
@@ -343,6 +345,28 @@ abstract class AbstractFrameReflower
         return $max_width !== "none"
             ? $style->length_in_pt($max_width, $cbw ?? INF)
             : INF;
+    }
+
+    /**
+     * Resolve the `height` property.
+     *
+     * Resolves to `auto` if a percentage and the containing-block height is
+     * not defined.
+     *
+     * https://www.w3.org/TR/CSS21/visudet.html#the-height-property
+     *
+     * @param float|null $cbh Height of the containing block.
+     *
+     * @return float|string
+     */
+    protected function resolve_height(?float $cbh)
+    {
+        $style = $this->_frame->get_style();
+        $height = $style->height;
+
+        return $cbh === null && Helpers::is_percent($height)
+            ? "auto"
+            : $style->length_in_pt($height, $cbh ?? 0);
     }
 
     /**
