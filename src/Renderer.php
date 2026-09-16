@@ -165,6 +165,29 @@ class Renderer extends AbstractRenderer
 
         }
 
+        // The content of a box with a writing mode orthogonal to the one of
+        // its parent is laid out horizontally and rotated into place here, see
+        // FrameReflower\Block::reflow_orthogonal()
+        $rotation = 0;
+
+        if (\in_array($display, ["block", "list-item", "inline-block", "table-cell"], true)) {
+            $parent = $frame->get_parent();
+            $rotation = $style->writing_mode_angle() - ($parent !== null ? $parent->get_style()->writing_mode_angle() : 0);
+        }
+
+        if ($rotation !== 0) {
+            $this->_canvas->save();
+            $content_box = $frame->get_content_box();
+
+            if ($rotation > 0) {
+                $this->_canvas->rotate(90, $content_box["x"], $content_box["y"]);
+                $this->_canvas->translate(0, -$content_box["w"]);
+            } else {
+                $this->_canvas->rotate(-90, $content_box["x"], $content_box["y"]);
+                $this->_canvas->translate(-$content_box["h"], 0);
+            }
+        }
+
         // Starts the overflow: hidden box
         if ($style->overflow === "hidden") {
             $padding_box = $frame->get_padding_box();
@@ -211,6 +234,10 @@ class Renderer extends AbstractRenderer
         // Ends the overflow: hidden box
         if ($style->overflow === "hidden") {
             $this->_canvas->clipping_end();
+        }
+
+        if ($rotation !== 0) {
+            $this->_canvas->restore();
         }
 
         if ($hasTransform) {
