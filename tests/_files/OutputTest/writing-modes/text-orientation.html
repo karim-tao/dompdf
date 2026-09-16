@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="text-orientation sets glyphs sideways or upright in vertical-rl and vertical-lr, mixed sets upright the characters of vertical scripts and symbols; the sideways modes ignore it; images stay upright">
+<style>
+@page {
+    size: 400pt 400pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+.box {
+    display: inline-block;
+    vertical-align: top;
+    height: 150pt;
+    margin-right: 8pt;
+    padding: 2pt;
+    border: 1pt solid black;
+    background-color: lightblue;
+}
+
+.rl { writing-mode: vertical-rl; }
+.lr { writing-mode: vertical-lr; }
+.slr { writing-mode: sideways-lr; }
+.sideways { text-orientation: sideways; }
+.mixed { text-orientation: mixed; }
+.upright { text-orientation: upright; }
+
+img {
+    width: 40pt;
+}
+</style>
+</head>
+
+<body>
+    <div class="box rl sideways">Sideways ± § ©</div><div class="box rl mixed">Mixed ± § © symbols upright</div><div class="box rl upright"><u>Upright</u> AB ±</div><div class="box lr upright">Upright lr</div><div class="box slr upright">Sideways-lr ignores upright</div>
+    <br>
+    <div class="box rl">before <img src="../../jamaica.jpg"> after</div><div class="box slr">before <img src="../../jamaica.jpg"> after</div>
+</body>
+
+</html>
