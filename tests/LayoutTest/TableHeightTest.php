@@ -148,10 +148,11 @@ CSS;
     {
         [$boxes] = $this->layout("<table id=\"t\" style=\"height: 100pt; border-collapse: separate; border-spacing: 10pt\"><tr><td id=\"a\">auto</td></tr><tr style=\"height: 100%\"><td id=\"b\">rest</td></tr></table>");
 
-        // The auto row and the stretched cell each hold two halves of the spacing
+        // The height applies to the border box, which includes the spacing;
+        // the auto row and the stretched cell each hold two halves of it
         $line = $this->lineHeight();
-        $this->assertEqualsWithDelta(100.0, $boxes["t"]["h"], 0.01);
-        $this->assertEqualsWithDelta(100.0 - 10.0 - $line - 10.0, $boxes["b"]["h"], 0.01);
+        $this->assertEqualsWithDelta(100.0 - 10.0, $boxes["t"]["h"], 0.01);
+        $this->assertEqualsWithDelta(100.0 - 10.0 - 10.0 - $line - 10.0, $boxes["b"]["h"], 0.01);
     }
 
     public function testSplitTableKeepsTheContentHeightOfItsFragments(): void
@@ -270,5 +271,13 @@ CSS;
         [, $texts] = $this->layout("<style>ol { counter-reset: n; list-style: none; margin: 0; padding: 0; } li::before { counter-increment: n; content: counter(n) \". \"; }</style><table style=\"height: 80pt\"><tr><td>auto</td></tr><tr style=\"height: 100%\"><td><ol><li>one</li><li>two</li><li>three</li></ol></td></tr></table>");
 
         $this->assertSame(["auto", "1.", "one", "2.", "two", "3.", "three"], $texts);
+    }
+
+    public function testTableHeightIncludesBordersAndPadding(): void
+    {
+        [$boxes] = $this->layout("<table id=\"t\" style=\"height: 100pt; border: 5pt solid black; border-collapse: separate; border-spacing: 0\"><tr><td id=\"a\">auto</td></tr></table>");
+
+        $this->assertEqualsWithDelta(90.0, $boxes["t"]["h"], 0.01);
+        $this->assertEqualsWithDelta(90.0, $boxes["a"]["h"], 0.01);
     }
 }
