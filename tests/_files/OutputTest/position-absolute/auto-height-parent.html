@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="Absolutely positioned boxes resolve their percentage heights and bottom offsets against the padding box of a positioned parent with an automatic height, once it is known">
+<style>
+@page {
+    size: 400pt 400pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+.parent {
+    position: relative;
+    padding: 5pt;
+    margin-bottom: 40pt;
+    background-color: pink;
+}
+
+.child {
+    position: absolute;
+    background-color: lightblue;
+}
+
+img {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    max-height: 100%;
+}
+</style>
+</head>
+
+<body>
+    <div class="parent">dompdf<div class="child" style="height: 80%">80%</div></div>
+    <div class="parent">line one<br>line two<br>line three<div class="child" style="bottom: 0; right: 0; width: 60pt">bottom right</div></div>
+    <div class="parent">text<div class="child" style="top: 50%; left: 50%; height: 50%">top left 50%</div><span class="child" style="left: 290pt; top: 0; bottom: 0; width: 60pt">stretched</span><br>second line</div>
+    <div class="parent">three<br>lines<br>tall<img src="../../jamaica.jpg"></div>
+</body>
+
+</html>

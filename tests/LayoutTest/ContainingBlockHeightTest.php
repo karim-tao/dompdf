@@ -108,4 +108,45 @@ CSS;
         $this->assertEqualsWithDelta(270.0, $boxes["image"]["h"], 0.01);
         $this->assertSame(1, $boxes["image"]["page"]);
     }
+
+    public function testPercentageHeightOfAnAbsoluteBoxResolvesAgainstTheAutoParent(): void
+    {
+        [$boxes] = $this->layout("<div id=\"parent\" style=\"position: relative; padding: 5pt\">one<br>two<div id=\"child\" style=\"position: absolute; height: 50%\">child</div></div>");
+
+        $line = $this->lineHeight();
+        $this->assertEqualsWithDelta((2 * $line + 10.0) / 2, $boxes["child"]["h"], 0.01);
+    }
+
+    public function testAbsoluteBoxWithoutOffsetsKeepsItsStaticPosition(): void
+    {
+        [$boxes] = $this->layout("<div style=\"position: relative\">one<br>two<div id=\"child\" style=\"position: absolute; height: 50%\">child</div>three<br>four</div>");
+
+        // The static position is the one on the line the box appears on
+        $this->assertEqualsWithDelta(20.0 + $this->lineHeight(), $boxes["child"]["y"], 0.01);
+    }
+
+    public function testAbsoluteBoxAnchoredToTheBottomOfTheAutoParent(): void
+    {
+        [$boxes] = $this->layout("<div id=\"parent\" style=\"position: relative\">one<br>two<br>three<div id=\"child\" style=\"position: absolute; bottom: 0; right: 0\">child</div></div>");
+
+        $this->assertEqualsWithDelta($boxes["parent"]["y"] + $boxes["parent"]["h"], $boxes["child"]["y"] + $boxes["child"]["h"], 0.01);
+        $this->assertEqualsWithDelta($boxes["parent"]["x"] + $boxes["parent"]["w"], $boxes["child"]["x"] + $boxes["child"]["w"], 0.01);
+    }
+
+    public function testAbsoluteBoxStretchedBetweenTopAndBottomOfTheAutoParent(): void
+    {
+        [$boxes] = $this->layout("<div id=\"parent\" style=\"position: relative\">one<br>two<br>three<div id=\"child\" style=\"position: absolute; top: 0; bottom: 0; left: 100pt; width: 20pt\">child</div></div>");
+
+        $this->assertEqualsWithDelta($boxes["parent"]["y"], $boxes["child"]["y"], 0.01);
+        $this->assertEqualsWithDelta($boxes["parent"]["h"], $boxes["child"]["h"], 0.01);
+    }
+
+    public function testAbsoluteImageWithPercentageMaxHeightFitsTheAutoParent(): void
+    {
+        $image = realpath(__DIR__ . "/../_files/jamaica.jpg");
+        [$boxes] = $this->layout("<div id=\"parent\" style=\"position: relative\">one<br>two<br>three<img id=\"image\" src=\"$image\" style=\"position: absolute; right: 0; bottom: 0; max-height: 100%\"></div>");
+
+        $this->assertEqualsWithDelta($boxes["parent"]["h"], $boxes["image"]["h"], 0.01);
+        $this->assertEqualsWithDelta($boxes["parent"]["h"] * 4 / 3, $boxes["image"]["w"], 0.01);
+    }
 }
