@@ -484,7 +484,8 @@ class Style
         "_dompdf_image_resolution"            => "image_resolution",
         "_webkit_transform"                   => "transform",
         "_webkit_transform_origin"            => "transform_origin",
-        "_webkit_writing_mode"                => "writing_mode"
+        "_webkit_writing_mode"                => "writing_mode",
+        "_webkit_text_orientation"            => "text_orientation"
     ];
 
     /**
@@ -541,6 +542,7 @@ class Style
         "stress" => true,
         "text_align" => true,
         "text_indent" => true,
+        "text_orientation" => true,
         "text_transform" => true,
         "visibility" => true,
         "voice_family" => true,
@@ -891,6 +893,7 @@ class Style
             $d["text_align"] = "";
             $d["text_decoration"] = "none";
             $d["text_indent"] = 0.0;
+            $d["text_orientation"] = "mixed";
             $d["text_transform"] = "none";
             $d["top"] = "auto";
             $d["unicode_bidi"] = "normal";
@@ -4329,6 +4332,27 @@ class Style
     }
 
     /**
+     * @link https://www.w3.org/TR/css-writing-modes-4/#text-orientation
+     */
+    protected function _compute_text_orientation(string $val)
+    {
+        $val = strtolower($val);
+
+        switch ($val) {
+            case "mixed":
+            case "upright":
+            case "sideways":
+                return $val;
+
+            // Legacy alias
+            case "sideways-right":
+                return "sideways";
+            default:
+                return null;
+        }
+    }
+
+    /**
      * The angle, in degrees, by which the lines of the writing mode are rotated
      * relative to `horizontal-tb`: 90 for the modes flowing top to bottom, -90
      * for `sideways-lr`, which flows bottom to top.
@@ -4347,6 +4371,21 @@ class Style
             default:
                 return 0;
         }
+    }
+
+    /**
+     * Whether the text of this style can contain upright glyphs, i.e. whether
+     * `text-orientation` applies: only in the `vertical-rl` and `vertical-lr`
+     * writing modes, and not with `text-orientation: sideways`.
+     *
+     * @return bool
+     */
+    public function has_upright_text(): bool
+    {
+        $writing_mode = $this->__get("writing_mode");
+
+        return ($writing_mode === "vertical-rl" || $writing_mode === "vertical-lr")
+            && $this->__get("text_orientation") !== "sideways";
     }
 
     /**
