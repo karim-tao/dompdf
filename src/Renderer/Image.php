@@ -60,7 +60,19 @@ class Image extends Block
                 $this->_canvas->clipping_roundrectangle($x, $y, $w, $h, $tl, $tr, $br, $bl);
             }
 
-            $this->_canvas->image($src, $x, $y, $w, $h, $style->image_resolution);
+            $angle = $style->writing_mode_angle();
+
+            if ($angle !== 0) {
+                // The line is rotated but the image stays upright: rotate it
+                // back around the center of its box, whose sides are swapped
+                // https://www.w3.org/TR/css-writing-modes-4/#replaced-elements
+                $this->_canvas->save();
+                $this->_canvas->rotate(-$angle, $x + $w / 2, $y + $h / 2);
+                $this->_canvas->image($src, $x + ($w - $h) / 2, $y + ($h - $w) / 2, $h, $w, $style->image_resolution);
+                $this->_canvas->restore();
+            } else {
+                $this->_canvas->image($src, $x, $y, $w, $h, $style->image_resolution);
+            }
 
             if ($style->has_border_radius()) {
                 $this->_canvas->clipping_end();
