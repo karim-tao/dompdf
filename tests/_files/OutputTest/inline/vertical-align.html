@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="Line boxes grow around their baseline to fit inline blocks, images and shifted text, which never protrude above the line">
+<style>
+@page {
+    size: 420pt 620pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+p {
+    margin: 0 0 8pt;
+    background-color: #eee;
+}
+
+.ib {
+    display: inline-block;
+    height: 40pt;
+    width: 30pt;
+    background-color: lightblue;
+}
+
+img {
+    width: 40pt;
+}
+
+td {
+    border: 1pt solid black;
+    padding: 0;
+}
+</style>
+</head>
+
+<body>
+    <p>text only line with <b>bold</b> and <span style="font-size: 16pt">bigger</span> text</p>
+    <p>before <span class="ib"></span> after</p>
+    <p>before <img src="../../jamaica.jpg"> after</p>
+    <p>middle <img src="../../jamaica.jpg" style="vertical-align: middle"> after</p>
+    <p>top <img src="../../jamaica.jpg" style="vertical-align: top"> bottom <img src="../../jamaica.jpg" style="vertical-align: bottom; width: 20pt"> after</p>
+    <p>text-top <img src="../../jamaica.jpg" style="vertical-align: text-top"> text-bottom <img src="../../jamaica.jpg" style="vertical-align: text-bottom"> after</p>
+    <p>sub <span style="vertical-align: sub">sub</span> super <span style="vertical-align: super">super</span> 5pt <span style="vertical-align: 5pt">up</span> -3pt <span style="vertical-align: -3pt">down</span></p>
+    <p><span class="ib">alone</span></p>
+    <p>inline-block with text <span class="ib" style="height: auto; padding: 4pt">one<br>two</span> after</p>
+    <table style="border-collapse: collapse"><tr><td><img src="../../jamaica.jpg" alt=" " style="width: 60pt"></td><td>cell text</td></tr></table>
+</body>
+
+</html>

@@ -10,6 +10,7 @@ use Dompdf\FrameDecorator\AbstractFrameDecorator;
 use Dompdf\FrameDecorator\Block;
 use Dompdf\FrameDecorator\ListBullet;
 use Dompdf\FrameDecorator\Page;
+use Dompdf\FrameDecorator\TableCell as TableCellFrameDecorator;
 use Dompdf\FrameReflower\Text as TextFrameReflower;
 use Dompdf\Positioner\Inline as InlinePositioner;
 use Iterator;
@@ -25,9 +26,23 @@ use Iterator;
 class LineBox
 {
     /**
+     * Share of the height of an inline box above its baseline. The rest is
+     * the depth of the descenders below it
+     */
+    const ASCENT_RATIO = 0.8;
+
+    /**
      * @var Block
      */
     protected $_block_frame;
+
+    /**
+     * The frames the line box has been made high enough for, with their
+     * margin heights, see `fit()`
+     *
+     * @var array<array{0: Frame, 1: float}>
+     */
+    protected $_fitted = [];
 
     /**
      * @var AbstractFrameDecorator[]
@@ -58,6 +73,20 @@ class LineBox
      * @var float
      */
     public $h = 0.0;
+
+    /**
+     * Height of the line box above its baseline
+     *
+     * @var float
+     */
+    public $ascent = 0.0;
+
+    /**
+     * Depth of the line box below its baseline
+     *
+     * @var float
+     */
+    public $descent = 0.0;
 
     /**
      * @var float
@@ -322,18 +351,259 @@ class LineBox
         $this->_frames = array_values($this->_frames);
 
         // Recalculate the height of the line
-        $h = 0.0;
         $this->inline = false;
+        $this->_fitted = [];
 
         foreach ($this->_frames as $f) {
-            $h = max($h, $f->get_margin_height());
-
             if ($f->get_positioner() instanceof InlinePositioner) {
                 $this->inline = true;
             }
+
+            $this->_fitted[] = [$f, $f->get_margin_height()];
         }
 
-        $this->h = $h;
+        $this->recalculate_height();
+    }
+
+    /**
+     * Make the line box high enough for a frame.
+     *
+     * The line box grows around its baseline to fit the extents of the frame
+     * as aligned by its `vertical-align`, or to the height of the frame when
+     * it is aligned to the top or bottom of the line. Like browsers do for
+     * legacy documents, a line without text, made of images or inline blocks
+     * and white space, is only as high as its boxes.
+     *
+     * https://www.w3.org/TR/CSS21/visudet.html#line-height
+     * https://quirks.spec.whatwg.org/#the-line-height-calculation-quirk
+     *
+     * @param Frame $frame
+     * @param float $height The margin height of the frame
+     */
+    public function fit(Frame $frame, float $height): void
+    {
+        $this->_fitted[] = [$frame, $height];
+        $this->recalculate_height();
+    }
+
+    /**
+     * Recalculate the height of the line box from the frames it has been
+     * made high enough for, see `fit()`.
+     */
+    protected function recalculate_height(): void
+    {
+        $text = false;
+        $atomic = false;
+
+        foreach ($this->_fitted as [$frame]) {
+            if ($this->is_atomic($frame)) {
+                $atomic = true;
+            } elseif ($this->has_text($frame)) {
+                $text = true;
+            }
+        }
+
+        $this->h = 0.0;
+        $this->ascent = 0.0;
+        $this->descent = 0.0;
+
+        foreach ($this->_fitted as [$frame, $height]) {
+            // White space and line breaks do not count in a line without text
+            if ($atomic && !$text && !$this->is_atomic($frame)) {
+                continue;
+            }
+
+            $align = $this->get_alignment($frame);
+
+            if ($align === "top" || $align === "bottom") {
+                $this->h = max($this->h, $height);
+            } else {
+                [$ascent, $descent] = $this->get_extents($frame, $height);
+                $this->ascent = max($this->ascent, $ascent);
+                $this->descent = max($this->descent, $descent);
+            }
+        }
+
+        $this->h = max($this->h, $this->ascent + $this->descent);
+    }
+
+    /**
+     * The height of a line of text of the block, which `text-top` and
+     * `text-bottom` align to.
+     *
+     * @return float
+     */
+    public function get_strut(): float
+    {
+        $style = $this->_block_frame->get_style();
+        $size = $style->font_size;
+        $fontHeight = $this->_block_frame->get_dompdf()->getFontMetrics()->getFontHeight($style->font_family, $size);
+
+        return ($style->line_height / ($size > 0 ? $size : 1)) * $fontHeight;
+    }
+
+    /**
+     * The `vertical-align` a frame is aligned by: its own for atomic inline
+     * boxes, the one of its parent for text and inline boxes. The content of
+     * table cells is aligned to the baseline; the cell aligns as a whole.
+     *
+     * @param Frame $frame
+     *
+     * @return string A keyword or a length
+     */
+    public function get_alignment(Frame $frame): string
+    {
+        if ($this->is_atomic($frame)) {
+            return $frame->get_style()->vertical_align;
+        }
+
+        $parent = $frame->get_parent();
+
+        if ($parent === null || $parent instanceof TableCellFrameDecorator) {
+            return "baseline";
+        }
+
+        return $parent->get_style()->vertical_align;
+    }
+
+    /**
+     * The extents of a frame above and below the baseline of the line box,
+     * once aligned by its `vertical-align`.
+     *
+     * Text and inline boxes have their ascenders above the baseline and their
+     * descenders below it. Atomic inline boxes stand on the baseline.
+     *
+     * @param Frame $frame
+     * @param float $height The margin height of the frame
+     *
+     * @return float[] The height above and the depth below the baseline
+     */
+    public function get_extents(Frame $frame, float $height): array
+    {
+        if ($this->is_atomic($frame)) {
+            $ascent = $this->get_baseline($frame, $height);
+            $descent = $height - $ascent;
+        } else {
+            $ascent = self::ASCENT_RATIO * $height;
+            $descent = (1 - self::ASCENT_RATIO) * $height;
+        }
+
+        $shift = $this->get_shift($frame, $height);
+
+        return [$ascent - $shift, $descent + $shift];
+    }
+
+    /**
+     * The distance of the baseline of a frame from its top.
+     *
+     * Text has its baseline a font height below the top of its glyph box. An
+     * atomic inline box has the baseline of the last line of text of an
+     * inline block, or its bottom margin edge if it has no line of text, like
+     * an image.
+     *
+     * https://www.w3.org/TR/CSS21/visudet.html#propdef-vertical-align
+     *
+     * @param Frame $frame
+     * @param float $height The margin height of the frame
+     *
+     * @return float
+     */
+    public function get_baseline(Frame $frame, float $height): float
+    {
+        $style = $frame->get_style();
+
+        if (!$this->is_atomic($frame)) {
+            return $this->_block_frame->get_dompdf()->getFontMetrics()->getFontBaseline($style->font_family, $style->font_size);
+        }
+
+        if ($frame instanceof Block && $style->overflow === "visible") {
+            foreach (array_reverse($frame->get_line_boxes()) as $line) {
+                if ($line->inline && !$line->is_empty()) {
+                    return $line->y + $line->ascent - $frame->get_position("y");
+                }
+            }
+        }
+
+        return $height;
+    }
+
+    /**
+     * How far down the baseline of a frame is moved from the baseline of the
+     * line box by its `vertical-align`.
+     *
+     * @param Frame $frame
+     * @param float $height The margin height of the frame
+     *
+     * @return float
+     */
+    public function get_shift(Frame $frame, float $height): float
+    {
+        $style = $frame->get_style();
+        $align = $this->get_alignment($frame);
+        $atomic = $this->is_atomic($frame);
+        $ascent = $atomic ? $height : self::ASCENT_RATIO * $height;
+        $descent = $height - $ascent;
+        $strut = $this->get_strut();
+        $baseline = $this->_block_frame->get_dompdf()->getFontMetrics()->getFontBaseline($style->font_family, $style->font_size);
+
+        switch ($align) {
+            case "middle":
+                // Centre the box on the middle of the lowercase letters, half
+                // an x-height above the baseline, taken as a quarter of the
+                // font size
+                return $atomic ? $height / 2 - 0.25 * $style->font_size : 0.0;
+
+            case "sub":
+                return 0.5 * $baseline;
+
+            case "super":
+                return -0.4 * $baseline;
+
+            case "text-top":
+                return $ascent - self::ASCENT_RATIO * $strut;
+
+            case "text-bottom":
+                return (1 - self::ASCENT_RATIO) * $strut - $descent;
+
+            case "baseline":
+            case "top":
+            case "bottom":
+                return 0.0;
+
+            default:
+                return -(float) $style->length_in_pt($align, $style->font_size);
+        }
+    }
+
+    /**
+     * Whether a frame is text other than white space, or a list marker.
+     *
+     * @param Frame $frame
+     *
+     * @return bool
+     */
+    protected function has_text(Frame $frame): bool
+    {
+        if ($frame->is_text_node()) {
+            return trim($frame->get_text()) !== "";
+        }
+
+        return $frame->get_style()->display === "-dompdf-list-bullet";
+    }
+
+    /**
+     * Whether a frame is an atomic inline box, like an inline block or an
+     * image, rather than text, an inline box, a line break or a list marker.
+     *
+     * @param Frame $frame
+     *
+     * @return bool
+     */
+    protected function is_atomic(Frame $frame): bool
+    {
+        $display = $frame->get_style()->display;
+
+        return $display !== "inline" && $display !== "-dompdf-br" && $display !== "-dompdf-list-bullet";
     }
 
     /**
