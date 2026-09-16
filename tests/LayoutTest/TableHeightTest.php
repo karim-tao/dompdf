@@ -254,4 +254,41 @@ CSS;
         $this->assertEqualsWithDelta(40.0, $boxes["a"]["h"], 0.01);
         $this->assertEqualsWithDelta($this->lineHeight(), $boxes["b"]["h"], 0.01);
     }
+
+    public function testPercentageHeightsResolveAgainstTheStretchedCell(): void
+    {
+        [$boxes] = $this->layout("<table style=\"height: 120pt\"><tr><td id=\"a\">auto</td></tr><tr style=\"height: 100%\"><td id=\"b\"><div id=\"half\" style=\"height: 50%\">half</div></td></tr></table>");
+
+        $line = $this->lineHeight();
+        $this->assertEqualsWithDelta(120.0 - $line, $boxes["b"]["h"], 0.01);
+        $this->assertEqualsWithDelta((120.0 - $line) / 2, $boxes["half"]["h"], 0.01);
+    }
+
+    public function testImageFillsTheStretchedCell(): void
+    {
+        $image = realpath(__DIR__ . "/../_files/jamaica.jpg");
+        [$boxes] = $this->layout("<table style=\"height: 200pt\"><tr><td id=\"a\">title</td></tr><tr style=\"height: 100%\"><td style=\"line-height: 0\"><img id=\"i\" src=\"$image\" style=\"max-width: 100%; max-height: 100%\"></td></tr></table>");
+
+        // 2048 x 1536 px: the height of the cell limits the image
+        $line = $this->lineHeight();
+        $this->assertEqualsWithDelta(200.0 - $line, $boxes["i"]["h"], 0.01);
+        $this->assertEqualsWithDelta((200.0 - $line) * 2048 / 1536, $boxes["i"]["w"], 0.01);
+    }
+
+    public function testNestedTableInTheStretchedCell(): void
+    {
+        [$boxes] = $this->layout("<table style=\"height: 150pt\"><tr><td id=\"a\">auto</td></tr><tr style=\"height: 100%\"><td id=\"b\"><table id=\"n\" style=\"height: 60pt\"><tr><td id=\"na\">auto</td></tr><tr style=\"height: 100%\"><td id=\"nb\">rest</td></tr></table></td></tr></table>");
+
+        $line = $this->lineHeight();
+        $this->assertEqualsWithDelta(150.0 - $line, $boxes["b"]["h"], 0.01);
+        $this->assertEqualsWithDelta(60.0, $boxes["n"]["h"], 0.01);
+        $this->assertEqualsWithDelta(60.0 - $line, $boxes["nb"]["h"], 0.01);
+    }
+
+    public function testCountersSurviveTheSecondLayoutPass(): void
+    {
+        [, $texts] = $this->layout("<style>ol { counter-reset: n; list-style: none; margin: 0; padding: 0; } li::before { counter-increment: n; content: counter(n) \". \"; }</style><table style=\"height: 80pt\"><tr><td>auto</td></tr><tr style=\"height: 100%\"><td><ol><li>one</li><li>two</li><li>three</li></ol></td></tr></table>");
+
+        $this->assertSame(["auto", "1.", "one", "2.", "two", "3.", "three"], $texts);
+    }
 }

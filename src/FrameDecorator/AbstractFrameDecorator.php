@@ -258,6 +258,25 @@ abstract class AbstractFrameDecorator extends Frame
     }
 
     /**
+     * Reset the layout of the frame and of its descendants, so that they can
+     * be laid out again, keeping their generated content and counters.
+     */
+    public function reset_layout(): void
+    {
+        $this->_frame->reset();
+        $this->_reflower->reset();
+
+        // clear parent lookup caches
+        $this->_cached_parent = null;
+        $this->_block_parent = null;
+        $this->_positioned_parent = null;
+
+        foreach ($this->get_children() as $child) {
+            $child->reset_layout();
+        }
+    }
+
+    /**
      * If this represents a generated node then child nodes represent generated
      * content. Remove the children since the content will be generated next
      * time this frame is reflowed.
