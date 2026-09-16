@@ -64,7 +64,12 @@ class Image extends AbstractFrameReflower
         // values could be resolved here
         $style = $this->_frame->get_style();
 
-        [$width] = $this->calculate_size(null, null);
+        if ($style->writing_mode_angle() !== 0) {
+            [, $width] = $this->calculate_size(null, null);
+        } else {
+            [$width] = $this->calculate_size(null, null);
+        }
+
         $min_width = $this->resolve_min_width(null);
         $percent_width = Helpers::is_percent($style->width)
             || Helpers::is_percent($style->max_width)
@@ -180,7 +185,16 @@ class Image extends AbstractFrameReflower
         }
 
         [, , $cbw, $cbh] = $frame->get_containing_block();
-        [$width, $height] = $this->calculate_size($cbw, $cbh);
+
+        // In a vertical writing mode the image stays upright while the line
+        // is laid out horizontally and rotated, so its width and height, and
+        // the ones of the containing block, are swapped in the layout
+        // https://www.w3.org/TR/css-writing-modes-4/#replaced-elements
+        if ($style->writing_mode_angle() !== 0) {
+            [$height, $width] = $this->calculate_size($cbh, $cbw);
+        } else {
+            [$width, $height] = $this->calculate_size($cbw, $cbh);
+        }
 
         if ($debug_png) {
             print $width . " " . $height . ";";

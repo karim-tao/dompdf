@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="Table cells with a vertical writing mode take the width of their rotated lines and give the row the length of their text">
+<style>
+@page {
+    size: 400pt 300pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 2pt;
+    border: 1pt solid black;
+    vertical-align: top;
+}
+
+.rl { writing-mode: vertical-rl; }
+.slr { writing-mode: sideways-lr; }
+.upright { writing-mode: vertical-lr; text-orientation: upright; }
+</style>
+</head>
+
+<body>
+    <table>
+        <tr><th class="rl">Vertical header</th><th class="slr">Sideways header</th><th class="upright">Up</th><th>Normal header</th></tr>
+        <tr><td>1</td><td>2</td><td>3</td><td>4</td></tr>
+    </table>
+</body>
+
+</html>
