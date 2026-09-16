@@ -39,6 +39,12 @@ class TableCell extends BlockFrameDecorator
         $this->content_height = 0.0;
     }
 
+    public function reset_layout(): void
+    {
+        parent::reset_layout();
+        $this->content_height = 0.0;
+    }
+
     /**
      * @return float
      */
