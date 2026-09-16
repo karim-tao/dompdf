@@ -297,12 +297,12 @@ class Block extends AbstractFrameReflower
         $content_height = $this->_calculate_content_height();
         $cb = $frame->get_containing_block();
 
-        $height = $style->length_in_pt($style->height, $cb["h"]);
+        $height = $this->resolve_height($cb["h"]);
         $margin_top = $style->length_in_pt($style->margin_top, $cb["w"]);
         $margin_bottom = $style->length_in_pt($style->margin_bottom, $cb["w"]);
 
-        $top = $style->length_in_pt($style->top, $cb["h"]);
-        $bottom = $style->length_in_pt($style->bottom, $cb["h"]);
+        $top = $style->length_in_pt($style->top, $cb["h"] ?? 0);
+        $bottom = $style->length_in_pt($style->bottom, $cb["h"] ?? 0);
 
         if ($frame->is_absolute()) {
             // Absolutely positioned
@@ -848,9 +848,12 @@ class Block extends AbstractFrameReflower
 
         $cb_y = $y + $top;
 
-        $height = $style->length_in_pt($style->height, $cb["h"]);
+        // The height of the containing block of the children is undefined
+        // while it depends on their layout
+        // https://www.w3.org/TR/CSS21/visudet.html#the-height-property
+        $height = $this->resolve_height($cb["h"]);
         if ($height === "auto") {
-            $height = ($cb["h"] + $cb["y"]) - $bottom - $cb_y;
+            $height = null;
         }
 
         // Set the y position of the first line in this block
