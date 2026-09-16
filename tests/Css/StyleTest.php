@@ -492,6 +492,106 @@ class StyleTest extends TestCase
         $this->assertSame(realpath($dompdf->getOptions()->getRootDir()) . $expected, $style->font_family);
     }
 
+    public static function writingModeProvider(): array
+    {
+        return [
+            // Keywords
+            ["horizontal-tb", "horizontal-tb"],
+            ["vertical-rl", "vertical-rl"],
+            ["vertical-lr", "vertical-lr"],
+            ["sideways-rl", "sideways-rl"],
+            ["sideways-lr", "sideways-lr"],
+
+            // Legacy SVG 1.1 values
+            ["lr", "horizontal-tb"],
+            ["lr-tb", "horizontal-tb"],
+            ["rl", "horizontal-tb"],
+            ["rl-tb", "horizontal-tb"],
+            ["tb", "vertical-rl"],
+            ["tb-rl", "vertical-rl"],
+            ["tb-lr", "vertical-lr"],
+
+            // Case variations
+            ["Vertical-RL", "vertical-rl"],
+
+            // Invalid values
+            ["vertical", "horizontal-tb"],
+            ["none", "horizontal-tb"]
+        ];
+    }
+
+    /**
+     * @dataProvider writingModeProvider
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('writingModeProvider')]
+    public function testWritingMode(string $value, string $expected): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $style = new Style($sheet);
+
+        $style->set_prop("writing_mode", $value);
+        $this->assertSame($expected, $style->writing_mode);
+    }
+
+    public function testWritingModeAlias(): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $style = new Style($sheet);
+
+        $style->set_prop("-webkit-writing-mode", "vertical-rl");
+        $this->assertSame("vertical-rl", $style->writing_mode);
+    }
+
+    public function testWritingModeInherited(): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $parentStyle = new Style($sheet);
+        $style = new Style($sheet);
+
+        $parentStyle->set_prop("writing_mode", "sideways-lr");
+        $style->inherit($parentStyle);
+
+        $this->assertSame("sideways-lr", $style->writing_mode);
+    }
+
+    public static function writingModeAngleProvider(): array
+    {
+        return [
+            ["horizontal-tb", 0],
+            ["vertical-rl", 90],
+            ["vertical-lr", 90],
+            ["sideways-rl", 90],
+            ["sideways-lr", -90]
+        ];
+    }
+
+    /**
+     * @dataProvider writingModeAngleProvider
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('writingModeAngleProvider')]
+    public function testWritingModeAngle(string $value, int $expected): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $style = new Style($sheet);
+
+        $style->set_prop("writing_mode", $value);
+        $this->assertSame($expected, $style->writing_mode_angle());
+    }
+
+    /**
+     * @dataProvider textOrientationProvider
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('textOrientationProvider')]
+
+    /**
+     * @dataProvider uprightTextProvider
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('uprightTextProvider')]
+
     public static function fontWeightProvider(): array
     {
         return [
