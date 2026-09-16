@@ -545,11 +545,13 @@ class Cellmap
      *
      * @param float      $extra The height to distribute, in addition to the height of the rows
      * @param int[]|null $rows  The rows to distribute it over, all of them by default
+     *
+     * @return float[] The height granted to each row, by index
      */
-    public function distribute_height(float $extra, ?array $rows = null): void
+    public function distribute_height(float $extra, ?array $rows = null): array
     {
         if ($extra <= 0) {
-            return;
+            return [];
         }
 
         $indexes = [];
@@ -586,7 +588,7 @@ class Cellmap
         }
 
         if ($indexes === []) {
-            return;
+            return [];
         }
 
         $grants = [];
@@ -665,6 +667,8 @@ class Cellmap
                 }
             }
         }
+
+        return $grants;
     }
 
     /**
@@ -888,24 +892,52 @@ class Cellmap
     }
 
     /**
+     * Apply the borders resolved for a cell in the collapsing border model,
+     * at half their width, or the border spacing as its margins in the
+     * separated model. They are used values, lost when the cell is reset.
+     *
+     * @param Frame $frame
+     */
+    public function apply_cell_style(Frame $frame): void
+    {
+        $style = $frame->get_style();
+        $table_style = $this->_table->get_style();
+
+        if ($table_style->border_collapse === "collapse") {
+            [$top, $right, $bottom, $left] = $this->get_resolved_border($frame);
+
+            $style->set_used("border_top_width", $top["width"] / 2);
+            $style->set_used("border_top_style", $top["style"]);
+            $style->set_used("border_top_color", $top["color"]);
+            $style->set_used("border_right_width", $right["width"] / 2);
+            $style->set_used("border_right_style", $right["style"]);
+            $style->set_used("border_right_color", $right["color"]);
+            $style->set_used("border_bottom_width", $bottom["width"] / 2);
+            $style->set_used("border_bottom_style", $bottom["style"]);
+            $style->set_used("border_bottom_color", $bottom["color"]);
+            $style->set_used("border_left_width", $left["width"] / 2);
+            $style->set_used("border_left_style", $left["style"]);
+            $style->set_used("border_left_color", $left["color"]);
+            $style->set_used("margin", 0);
+        } else {
+            // Border spacing is effectively a margin between cells. The
+            // additional 1/2 width gets added to the table proper
+            [$h, $v] = $table_style->border_spacing;
+
+            $style->set_used("margin_top", $v / 2);
+            $style->set_used("margin_bottom", $v / 2);
+            $style->set_used("margin_left", $h / 2);
+            $style->set_used("margin_right", $h / 2);
+        }
+    }
+
+    /**
      * Apply resolved borders to table cells and calculate column widths.
      */
     protected function calculate_column_widths(): void
     {
         $table = $this->_table;
         $table_style = $table->get_style();
-        $collapse = $table_style->border_collapse === "collapse";
-
-        if ($collapse) {
-            $v_spacing = 0;
-            $h_spacing = 0;
-        } else {
-            // The additional 1/2 width gets added to the table proper
-            [$h, $v] = $table_style->border_spacing;
-            $v_spacing = $v / 2;
-            $h_spacing = $h / 2;
-        }
-
         foreach ($this->_frames as $frame_info) {
             /** @var TableCellFrameDecorator */
             $frame = $frame_info["frame"];
@@ -916,30 +948,7 @@ class Cellmap
                 continue;
             }
 
-            if ($collapse) {
-                // Set the resolved border at half width
-                [$top, $right, $bottom, $left] = $this->get_resolved_border($frame);
-
-                $style->set_used("border_top_width", $top["width"] / 2);
-                $style->set_used("border_top_style", $top["style"]);
-                $style->set_used("border_top_color", $top["color"]);
-                $style->set_used("border_right_width", $right["width"] / 2);
-                $style->set_used("border_right_style", $right["style"]);
-                $style->set_used("border_right_color", $right["color"]);
-                $style->set_used("border_bottom_width", $bottom["width"] / 2);
-                $style->set_used("border_bottom_style", $bottom["style"]);
-                $style->set_used("border_bottom_color", $bottom["color"]);
-                $style->set_used("border_left_width", $left["width"] / 2);
-                $style->set_used("border_left_style", $left["style"]);
-                $style->set_used("border_left_color", $left["color"]);
-                $style->set_used("margin", 0);
-            } else {
-                // Border spacing is effectively a margin between cells
-                $style->set_used("margin_top", $v_spacing);
-                $style->set_used("margin_bottom", $v_spacing);
-                $style->set_used("margin_left", $h_spacing);
-                $style->set_used("margin_right", $h_spacing);
-            }
+            $this->apply_cell_style($frame);
 
             if ($this->_columns_locked) {
                 continue;
