@@ -280,7 +280,7 @@ class Table extends AbstractFrameReflower
             $style->border_bottom_width
         ], $cb["w"]);
 
-        $height = $style->length_in_pt($style->height, $cb["h"]);
+        $height = $this->resolve_height($cb["h"]);
         $definite = $height !== "auto" && !$frame->is_split && !$frame->is_split_off;
 
         $cellmap = $frame->get_cellmap();
