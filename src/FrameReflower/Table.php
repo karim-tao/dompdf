@@ -263,7 +263,6 @@ class Table extends AbstractFrameReflower
         $height = $style->length_in_pt($style->height, $cb["h"]);
 
         $cellmap = $frame->get_cellmap();
-        $cellmap->assign_frame_heights();
         $rows = $cellmap->get_rows();
 
         // Determine our content height
@@ -282,13 +281,15 @@ class Table extends AbstractFrameReflower
         $max_height = $this->resolve_max_height($cb["h"]);
         $height = Helpers::clamp($height, $min_height, $max_height);
 
-        // Use the content height or the height value, whichever is greater
-        if ($height <= $content_height) {
+        // Use the content height or the height value, whichever is greater. A
+        // table split across pages keeps the content height of its fragments
+        if ($height <= $content_height || $frame->is_split || $frame->is_split_off) {
             $height = $content_height;
         } else {
-            // FIXME: Borders and row positions are not properly updated by this
-            // $cellmap->set_frame_heights($height, $content_height);
+            $cellmap->distribute_height($height - $content_height);
         }
+
+        $cellmap->assign_frame_heights();
 
         return $height;
     }
