@@ -31,6 +31,14 @@ class Block extends AbstractFrameReflower
      */
     protected $_frame;
 
+    /**
+     * Absolutely positioned frames whose containing block is this frame,
+     * laid out before its height was known
+     *
+     * @var AbstractFrameDecorator[]
+     */
+    protected $_absolute_frames = [];
+
     function __construct(BlockFrameDecorator $frame)
     {
         parent::__construct($frame);
@@ -791,6 +799,7 @@ class Block extends AbstractFrameReflower
         }
 
         $this->determine_absolute_containing_block();
+        $this->_absolute_frames = [];
 
         // Counters and generated content
         $this->_set_content();
@@ -904,6 +913,7 @@ class Block extends AbstractFrameReflower
             }
         }
 
+        $this->reflow_absolute_frames();
         $this->_text_align();
         $this->vertical_align();
 
@@ -919,6 +929,58 @@ class Block extends AbstractFrameReflower
                 $block->add_line();
             }
         }
+    }
+
+    public function reset(): void
+    {
+        parent::reset();
+        $this->_absolute_frames = [];
+    }
+
+    /**
+     * Register an absolutely positioned frame whose containing block is this
+     * frame, laid out before the height of the frame was known.
+     *
+     * @param AbstractFrameDecorator $frame
+     */
+    public function add_absolute_frame(AbstractFrameDecorator $frame): void
+    {
+        $this->_absolute_frames[] = $frame;
+    }
+
+    /**
+     * Lay out again the absolutely positioned frames whose containing block
+     * is this frame, once its height is known, if their vertical layout
+     * depends on it. A frame without offsets keeps its static position.
+     *
+     * https://www.w3.org/TR/CSS21/visudet.html#containing-block-details
+     */
+    protected function reflow_absolute_frames(): void
+    {
+        foreach ($this->_absolute_frames as $frame) {
+            $style = $frame->get_style();
+            $dependent = $style->get_specified("bottom") !== "auto";
+
+            foreach (["height", "min_height", "max_height", "top"] as $prop) {
+                $dependent = $dependent || Helpers::is_percent($style->get_specified($prop));
+            }
+
+            if (!$dependent) {
+                continue;
+            }
+
+            $static_x = $style->get_specified("left") === "auto" && $style->get_specified("right") === "auto";
+            $static_y = $style->get_specified("top") === "auto" && $style->get_specified("bottom") === "auto";
+            [$x, $y] = $frame->get_position();
+
+            $frame->reset_layout();
+            $frame->reflow($this->_frame);
+
+            [$new_x, $new_y] = $frame->get_position();
+            $frame->move($static_x ? $x - $new_x : 0, $static_y ? $y - $new_y : 0);
+        }
+
+        $this->_absolute_frames = [];
     }
 
     public function get_min_max_content_width(): array
