@@ -149,6 +149,30 @@ CSS;
         $this->assertEqualsWithDelta(40.0, $boxes["i"]["h"], 0.01);
     }
 
+    public function testUprightGlyphsAdvanceByTheFontHeight(): void
+    {
+        $boxes = $this->layout("<span class=\"box\" id=\"h\">ABC</span> <span class=\"box\" style=\"writing-mode: vertical-rl; text-orientation: upright\">CBA</span>");
+
+        $lineHeight = $boxes["h"]["h"];
+        $this->assertEqualsWithDelta(3 * $lineHeight, $boxes["CBA"]["w"], 0.01);
+    }
+
+    public function testMixedOrientationSetsUprightSymbolsOnly(): void
+    {
+        $boxes = $this->layout("<span class=\"box\" id=\"h\">A</span> <span class=\"box\" style=\"writing-mode: vertical-rl\">A±</span>");
+
+        $lineHeight = $boxes["h"]["h"];
+        $letter = $boxes["h"]["w"];
+        $this->assertEqualsWithDelta($letter + $lineHeight, $boxes["A±"]["w"], 0.01);
+    }
+
+    public function testSidewaysModesIgnoreTextOrientation(): void
+    {
+        $boxes = $this->layout("<span class=\"box\" id=\"h\">ABC</span> <span class=\"box\" style=\"writing-mode: sideways-lr; text-orientation: upright\">CBA</span>");
+
+        $this->assertEqualsWithDelta($boxes["h"]["w"], $boxes["CBA"]["w"], 0.01);
+    }
+
     public function testTableCellWithVerticalHeader(): void
     {
         $boxes = $this->layout("<table style=\"border-collapse: collapse\"><tr><th id=\"th\" style=\"writing-mode: vertical-rl; padding: 0; font-weight: normal\">Vertical header</th><td id=\"td\" style=\"padding: 0\">cell</td></tr></table><span class=\"box\" id=\"h\">Vertical header</span>");
