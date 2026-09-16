@@ -137,4 +137,26 @@ CSS;
         $this->assertGreaterThan($boxes["h"]["w"], $boxes["h"]["h"]);
         $this->assertEqualsWithDelta($boxes["horizontal child"]["w"], $boxes["h"]["h"], 0.01);
     }
+
+    public function testImageStaysUprightInVerticalFlow(): void
+    {
+        $image = realpath(__DIR__ . "/../_files/jamaica.jpg");
+        $boxes = $this->layout("<div class=\"box\" style=\"writing-mode: vertical-rl\"><img id=\"i\" src=\"$image\" style=\"width: 40pt\"></div>");
+
+        // 2048 x 1536 px scaled to 40pt wide is 30pt high: the sides are
+        // swapped in the rotated layout, the image stays upright when drawn
+        $this->assertEqualsWithDelta(30.0, $boxes["i"]["w"], 0.01);
+        $this->assertEqualsWithDelta(40.0, $boxes["i"]["h"], 0.01);
+    }
+
+    public function testTableCellWithVerticalHeader(): void
+    {
+        $boxes = $this->layout("<table style=\"border-collapse: collapse\"><tr><th id=\"th\" style=\"writing-mode: vertical-rl; padding: 0; font-weight: normal\">Vertical header</th><td id=\"td\" style=\"padding: 0\">cell</td></tr></table><span class=\"box\" id=\"h\">Vertical header</span>");
+
+        // The column is as wide as the line of the header, the row as high as
+        // its text
+        $this->assertEqualsWithDelta($boxes["h"]["h"], $boxes["th"]["w"], 0.01);
+        $this->assertEqualsWithDelta($boxes["h"]["w"], $boxes["th"]["h"], 0.01);
+        $this->assertEqualsWithDelta($boxes["th"]["h"], $boxes["td"]["h"], 0.01);
+    }
 }
