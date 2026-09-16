@@ -13,6 +13,7 @@ use Dompdf\FrameDecorator\Text as TextFrameDecorator;
 use Dompdf\Exception;
 use Dompdf\Css\Style;
 use Dompdf\Helpers;
+use Dompdf\LineBox;
 
 /**
  * Reflows block frames
@@ -566,11 +567,7 @@ class Block extends AbstractFrameReflower
      */
     function vertical_align()
     {
-        $fontMetrics = $this->get_dompdf()->getFontMetrics();
-
         foreach ($this->_frame->get_line_boxes() as $line) {
-            $height = $line->h;
-
             // Move all markers to the top of the line box
             foreach ($line->get_list_markers() as $marker) {
                 $x = $marker->get_position("x");
@@ -579,113 +576,32 @@ class Block extends AbstractFrameReflower
 
             foreach ($line->frames_to_align() as $frame) {
                 $style = $frame->get_style();
-                $isInlineBlock = $style->display !== "inline"
-                    && $style->display !== "-dompdf-list-bullet";
+                $height = $frame->get_margin_height();
+                $align = $line->get_alignment($frame);
+                $atomic = $style->display !== "inline" && $style->display !== "-dompdf-list-bullet";
 
-                $baseline = $fontMetrics->getFontBaseline($style->font_family, $style->font_size);
-                $y_offset = 0;
+                // Atomic inline boxes are positioned as a whole. Text is
+                // positioned by its glyph box within an inline box as high as
+                // the line height, which has its baseline a share of its
+                // height below its top
+                $baseline = $line->get_baseline($frame, $height);
+                $ascent = $atomic ? $baseline : LineBox::ASCENT_RATIO * $height;
 
-                //FIXME: The 0.8 ratio applied to the height is arbitrary (used to accommodate descenders?)
-                if ($isInlineBlock) {
-                    // Workaround: Skip vertical alignment if the frame is the
-                    // only one one the line, excluding empty text frames, which
-                    // may be the result of trailing white space
-                    // FIXME: This special case should be removed once vertical
-                    // alignment is properly fixed
-                    $skip = true;
+                switch ($align) {
+                    case "top":
+                        $y_offset = $ascent - $baseline;
+                        break;
 
-                    foreach ($line->get_frames() as $other) {
-                        if ($other !== $frame
-                            && !($other->is_text_node() && $other->get_node()->nodeValue === "")
-                         ) {
-                            $skip = false;
-                            break;
-                        }
-                    }
+                    case "bottom":
+                        $y_offset = $line->h - $height + $ascent - $baseline;
+                        break;
 
-                    if ($skip) {
-                        continue;
-                    }
-
-                    $marginHeight = $frame->get_margin_height();
-                    $imageHeightDiff = $height * 0.8 - $marginHeight;
-
-                    $align = $frame->get_style()->vertical_align;
-                    if (in_array($align, Style::VERTICAL_ALIGN_KEYWORDS, true)) {
-                        switch ($align) {
-                            case "middle":
-                                $y_offset = $imageHeightDiff / 2;
-                                break;
-
-                            case "sub":
-                                $y_offset = 0.3 * $height + $imageHeightDiff;
-                                break;
-
-                            case "super":
-                                $y_offset = -0.2 * $height + $imageHeightDiff;
-                                break;
-
-                            case "text-top": // FIXME: this should be the height of the frame minus the height of the text
-                                $y_offset = $height - $style->line_height;
-                                break;
-
-                            case "top":
-                                break;
-
-                            case "text-bottom": // FIXME: align bottom of image with the descender?
-                            case "bottom":
-                                $y_offset = 0.3 * $height + $imageHeightDiff;
-                                break;
-
-                            case "baseline":
-                            default:
-                                $y_offset = $imageHeightDiff;
-                                break;
-                        }
-                    } else {
-                        $y_offset = $baseline - (float)$style->length_in_pt($align, $style->font_size) - $marginHeight;
-                    }
-                } else {
-                    $parent = $frame->get_parent();
-                    if ($parent instanceof TableCellFrameDecorator) {
-                        $align = "baseline";
-                    } else {
-                        $align = $parent->get_style()->vertical_align;
-                    }
-                    if (in_array($align, Style::VERTICAL_ALIGN_KEYWORDS, true)) {
-                        switch ($align) {
-                            case "middle":
-                                $y_offset = ($height * 0.8 - $baseline) / 2;
-                                break;
-
-                            case "sub":
-                                $y_offset = $height * 0.8 - $baseline * 0.5;
-                                break;
-
-                            case "super":
-                                $y_offset = $height * 0.8 - $baseline * 1.4;
-                                break;
-
-                            case "text-top":
-                            case "top": // Not strictly accurate, but good enough for now
-                                break;
-
-                            case "text-bottom":
-                            case "bottom":
-                                $y_offset = $height * 0.8 - $baseline;
-                                break;
-
-                            case "baseline":
-                            default:
-                                $y_offset = $height * 0.8 - $baseline;
-                                break;
-                        }
-                    } else {
-                        $y_offset = $height * 0.8 - $baseline - (float)$style->length_in_pt($align, $style->font_size);
-                    }
+                    default:
+                        $y_offset = $line->ascent + $line->get_shift($frame, $height) - $baseline;
+                        break;
                 }
 
-                if ($y_offset !== 0) {
+                if ($y_offset !== 0.0) {
                     $frame->move(0, $y_offset);
                 }
             }
