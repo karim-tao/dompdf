@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<meta name="description"
+    content="The height of a table includes its borders, padding and border spacing, like its width, so a table filling its container does not overflow it">
+<style>
+@page {
+    size: 300pt 300pt;
+    margin: 20pt;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 10pt;
+}
+
+table {
+    width: 100%;
+    height: 100%;
+    border: 5pt solid #004054;
+    border-spacing: 10pt;
+}
+
+td {
+    border: 1pt solid black;
+    padding: 2pt;
+    vertical-align: top;
+}
+
+th {
+    background-color: lightblue;
+}
+</style>
+</head>
+
+<body>
+    <table>
+        <thead><tr><th>Type</th><th>Points</th></tr></thead>
+        <tbody><tr><td colspan="2"><h1>Title</h1>Description of the card.</td></tr></tbody>
+        <tfoot><tr><th>Category</th><th>1</th></tr></tfoot>
+    </table>
+</body>
+
+</html>

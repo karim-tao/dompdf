@@ -271,6 +271,15 @@ class Table extends AbstractFrameReflower
         $style = $frame->get_style();
         $cb = $frame->get_containing_block();
 
+        // The height applies to the border box of the table, like the width
+        // https://www.w3.org/TR/css-tables-3/#box-sizing
+        $delta = (float) $style->length_in_pt([
+            $style->border_top_width,
+            $style->padding_top,
+            $style->padding_bottom,
+            $style->border_bottom_width
+        ], $cb["w"]);
+
         $height = $style->length_in_pt($style->height, $cb["h"]);
         $definite = $height !== "auto" && !$frame->is_split && !$frame->is_split_off;
 
@@ -285,12 +294,14 @@ class Table extends AbstractFrameReflower
 
         if ($height === "auto") {
             $height = $content_height;
+        } else {
+            $height -= $delta;
         }
 
         // Handle min/max height
         // https://www.w3.org/TR/CSS21/visudet.html#min-max-heights
-        $min_height = $this->resolve_min_height($cb["h"]);
-        $max_height = $this->resolve_max_height($cb["h"]);
+        $min_height = $this->resolve_min_height($cb["h"]) - $delta;
+        $max_height = $this->resolve_max_height($cb["h"]) - $delta;
         $height = Helpers::clamp($height, $min_height, $max_height);
 
         $this->_stretched_rows = [];
