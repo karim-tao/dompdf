@@ -120,6 +120,7 @@ use Dompdf\Helpers;
  * @property float|string         $max_width                   Length in pt, a percentage value, or `none`
  * @property float|string         $min_height                  Length in pt, a percentage value, or `auto`
  * @property float|string         $min_width                   Length in pt, a percentage value, or `auto`
+ * @property string               $object_fit                  `fill`, `contain`, or `cover`
  * @property float                $opacity                     Number in the range [0, 1]
  * @property int                  $orphans
  * @property array|string         $outline_color
@@ -904,6 +905,7 @@ class Style
             $d["z_index"] = "auto";
 
             // CSS3
+            $d["object_fit"] = "fill";
             $d["opacity"] = 1.0;
             $d["background_size"] = ["auto", "auto"];
             $d["transform"] = [];
@@ -4508,6 +4510,22 @@ class Style
     protected function _compute_image_resolution(string $val)
     {
         return $this->parse_image_resolution($val);
+    }
+
+    /**
+     * fill | contain | cover
+     *
+     * The `none` and `scale-down` values are not supported.
+     *
+     * @link https://www.w3.org/TR/css-images-3/#the-object-fit
+     */
+    protected function _compute_object_fit(string $val)
+    {
+        $val = strtolower($val);
+
+        return in_array($val, ["fill", "contain", "cover"], true)
+            ? $val
+            : null;
     }
 
     /**

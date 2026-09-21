@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<style>
+@page {
+    size: 420pt 300pt;
+    margin: 20pt;
+}
+
+img {
+    vertical-align: top;
+    width: 100pt;
+    height: 100pt;
+    margin: 0 6pt 6pt 0;
+    padding: 4pt;
+    border: 2pt solid red;
+    background-color: silver;
+}
+
+.wide {
+    width: 220pt;
+    height: 60pt;
+}
+
+.contain {
+    object-fit: contain;
+}
+
+.cover {
+    object-fit: cover;
+}
+
+.round {
+    border-radius: 20pt;
+}
+</style>
+</head>
+
+<body>
+    <img src="../../jamaica.jpg"><img class="contain" src="../../jamaica.jpg"><img class="cover round" src="../../jamaica.jpg">
+    <br>
+    <img class="wide contain" src="../../jamaica.jpg"><img class="wide cover" src="../../jamaica.jpg" style="width: 120pt">
+</body>
+
+</html>
