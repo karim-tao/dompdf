@@ -465,6 +465,36 @@ class StyleTest extends TestCase
         $this->assertSame($expected, $style->background_size);
     }
 
+    public static function objectFitProvider(): array
+    {
+        return [
+            ["fill", "fill"],
+            ["contain", "contain"],
+            ["cover", "cover"],
+            ["CoveR", "cover"],
+
+            // Invalid and unsupported values
+            ["", "fill"],
+            ["none", "fill"],
+            ["scale-down", "fill"],
+            ["contain cover", "fill"]
+        ];
+    }
+
+    /**
+     * @dataProvider objectFitProvider
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('objectFitProvider')]
+    public function testObjectFit(string $value, string $expected): void
+    {
+        $dompdf = new Dompdf();
+        $sheet = new Stylesheet($dompdf);
+        $style = new Style($sheet);
+
+        $style->set_prop("object_fit", $value);
+        $this->assertSame($expected, $style->object_fit);
+    }
+
     public static function fontProvider(): array
     {
         return [
