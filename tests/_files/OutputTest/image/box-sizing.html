@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<style>
+@page {
+    size: 400pt 300pt;
+    margin: 20pt;
+}
+
+img {
+    width: 120pt;
+    height: 90pt;
+    margin: 0 6pt 6pt 0;
+    padding: 4pt;
+    border: 2pt solid red;
+    vertical-align: top;
+}
+
+.border-box {
+    box-sizing: border-box;
+}
+
+.constrained {
+    width: auto;
+    height: auto;
+    max-width: 120pt;
+    max-height: 90pt;
+}
+</style>
+</head>
+
+<body>
+    <img src="../../jamaica.jpg"><img class="border-box" src="../../jamaica.jpg">
+    <br>
+    <img class="constrained" src="../../jamaica.jpg"><img class="constrained border-box" src="../../jamaica.jpg">
+</body>
+
+</html>
