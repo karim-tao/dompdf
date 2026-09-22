@@ -81,6 +81,7 @@ use Dompdf\Helpers;
  * @property float|string         $border_top_right_radius     Radius in pt or a percentage value
  * @property string               $border_radius               Only use for setting all corners to the same radius
  * @property float|string         $bottom                      Length in pt, a percentage value, or `auto`
+ * @property string               $box_sizing                  `content-box` or `border-box`
  * @property string               $caption_side
  * @property string               $clear
  * @property string               $clip
@@ -811,6 +812,7 @@ class Style
             $d["border_radius"] = "";
             $d["border"] = "";
             $d["bottom"] = "auto";
+            $d["box_sizing"] = "content-box";
             $d["caption_side"] = "top";
             $d["clear"] = "none";
             $d["clip"] = "auto";
@@ -3518,6 +3520,20 @@ class Style
     protected function _set_inset(string $val): array
     {
         return $this->set_quad_shorthand("inset", $val);
+    }
+
+    /**
+     * content-box | border-box
+     *
+     * @link https://www.w3.org/TR/css-sizing-3/#box-sizing
+     */
+    protected function _compute_box_sizing(string $val)
+    {
+        $val = strtolower($val);
+
+        return in_array($val, ["content-box", "border-box"], true)
+            ? $val
+            : null;
     }
 
     /**

@@ -113,6 +113,25 @@ class Image extends AbstractFrameReflower
         $min_height = $this->resolve_min_height($cbh);
         $max_height = $this->resolve_max_height($cbh);
 
+        if ($style->box_sizing === "border-box") {
+            // The specified sizes include padding and borders: take them off
+            // to get the constraints of the content box
+            // https://www.w3.org/TR/css-sizing-3/#box-sizing
+            [$horizontal, $vertical] = $this->get_padding_border_size($cbw);
+
+            if ($width !== "auto") {
+                $width = max(0.0, $width - $horizontal);
+            }
+            if ($height !== "auto") {
+                $height = max(0.0, $height - $vertical);
+            }
+
+            $min_width = max(0.0, $min_width - $horizontal);
+            $max_width = max(0.0, $max_width - $horizontal);
+            $min_height = max(0.0, $min_height - $vertical);
+            $max_height = max(0.0, $max_height - $vertical);
+        }
+
         if ($width === "auto" && $height === "auto") {
             // Use intrinsic dimensions, resampled to pt
             [$img_width, $img_height] = $frame->get_intrinsic_dimensions();
@@ -156,6 +175,35 @@ class Image extends AbstractFrameReflower
         }
 
         return [$width, $height];
+    }
+
+    /**
+     * The horizontal and vertical space taken by the padding and borders of
+     * the frame, in pt. Percentage paddings are resolved against the width of
+     * the containing block.
+     *
+     * @param float|null $cbw Width of the containing block.
+     *
+     * @return float[]
+     */
+    protected function get_padding_border_size(?float $cbw): array
+    {
+        $style = $this->_frame->get_style();
+
+        $horizontal = (float) $style->length_in_pt([
+            $style->padding_left,
+            $style->padding_right,
+            $style->border_left_width,
+            $style->border_right_width
+        ], $cbw ?? 0);
+        $vertical = (float) $style->length_in_pt([
+            $style->padding_top,
+            $style->padding_bottom,
+            $style->border_top_width,
+            $style->border_bottom_width
+        ], $cbw ?? 0);
+
+        return [$horizontal, $vertical];
     }
 
     protected function resolve_dimensions(): void
