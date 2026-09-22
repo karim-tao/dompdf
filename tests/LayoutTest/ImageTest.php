@@ -164,6 +164,38 @@ HTML
 ,
                 80.0,
                 60.0
+            ],
+            "border-box fixed" => [
+                <<<HTML
+<img src="$filepath" style="width: 200pt; height: 100pt; padding: 5pt; border: 2pt solid red; box-sizing: border-box;">
+HTML
+,
+                186.0,
+                86.0
+            ],
+            "border-box max" => [
+                <<<HTML
+<img src="$filepath" style="max-width: 200pt; max-height: 100pt; border: 2pt solid red; box-sizing: border-box;">
+HTML
+,
+                128.0,
+                96.0
+            ],
+            "border-box width, auto height" => [
+                <<<HTML
+<img src="$filepath" style="width: 200pt; padding: 5pt; border: 2pt solid red; box-sizing: border-box;">
+HTML
+,
+                186.0,
+                139.5
+            ],
+            "content-box is the default" => [
+                <<<HTML
+<img src="$filepath" style="width: 200pt; height: 100pt; padding: 5pt; border: 2pt solid red; box-sizing: bogus;">
+HTML
+,
+                200.0,
+                100.0
             ]
         ];
     }
