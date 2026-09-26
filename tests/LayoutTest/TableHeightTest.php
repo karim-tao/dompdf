@@ -205,6 +205,17 @@ CSS;
         $this->assertEqualsWithDelta(30.0, $boxes["image"]["h"], 0.01);
     }
 
+    public function testImageFillsTheStretchedRow(): void
+    {
+        $image = realpath(__DIR__ . "/../_files/jamaica.jpg");
+        [$boxes] = $this->layout("<table id=\"table\" style=\"height: 200pt\"><tr><td>title</td></tr><tr style=\"height: 100%\"><td id=\"cell\" style=\"text-align: center; vertical-align: middle; line-height: 0\"><img id=\"image\" src=\"$image\" style=\"width: 100%; height: 100%; object-fit: contain\"></td></tr></table>");
+
+        $this->assertEqualsWithDelta($boxes["table"]["y"] + $boxes["table"]["h"], $boxes["cell"]["y"] + $boxes["cell"]["h"], 0.01);
+        $this->assertEqualsWithDelta($boxes["cell"]["y"], $boxes["image"]["y"], 0.01);
+        $this->assertEqualsWithDelta($boxes["cell"]["w"], $boxes["image"]["w"], 0.01);
+        $this->assertEqualsWithDelta($boxes["cell"]["h"], $boxes["image"]["h"], 0.01);
+    }
+
     public function testRowsOfATableTallerThanThePageAreNotStretched(): void
     {
         [$boxes] = $this->layout("<table style=\"height: 600pt\"><tr><td id=\"a\">a</td></tr><tr><td id=\"b\">b</td></tr></table>");

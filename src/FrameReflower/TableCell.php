@@ -20,6 +20,14 @@ use Dompdf\Helpers;
 class TableCell extends Block
 {
     /**
+     * Whether the height of the cell is final, i.e. the rows it spans have
+     * been laid out.
+     *
+     * @var bool
+     */
+    protected $_final_height = false;
+
+    /**
      * TableCell constructor.
      * @param BlockFrameDecorator $frame
      */
@@ -33,6 +41,8 @@ class TableCell extends Block
      */
     function reflow(?BlockFrameDecorator $block = null)
     {
+        $this->_absolute_frames = [];
+
         if ($this->is_orthogonal()) {
             $this->reflow_orthogonal($block);
             return;
@@ -254,6 +264,29 @@ class TableCell extends Block
 
         // Let the cellmap know our height
         $cellmap->set_frame_height($frame, $inline_size + $top_space + $bottom_space);
+    }
+
+    /**
+     * Whether the height of the cell is final, so that the absolutely
+     * positioned frames whose containing block is the cell resolve against
+     * its padding box.
+     *
+     * @return bool
+     */
+    public function has_final_height(): bool
+    {
+        return $this->_final_height;
+    }
+
+    /**
+     * Lay out again the absolutely positioned frames whose containing block
+     * is the cell, once the table has given the cell its final height.
+     */
+    public function reflow_absolute_frames_at_final_height(): void
+    {
+        $this->_final_height = true;
+        $this->reflow_absolute_frames();
+        $this->_final_height = false;
     }
 
     public function get_min_max_content_width(): array

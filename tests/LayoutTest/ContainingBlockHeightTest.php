@@ -149,4 +149,46 @@ CSS;
         $this->assertEqualsWithDelta($boxes["parent"]["h"], $boxes["image"]["h"], 0.01);
         $this->assertEqualsWithDelta($boxes["parent"]["h"] * 4 / 3, $boxes["image"]["w"], 0.01);
     }
+
+    /**
+     * A table whose first cell spans the rows next to it, and holds the given
+     * content.
+     */
+    private function rowspanTable(string $content, string $cellStyle = ""): string
+    {
+        return "<table style=\"border-collapse: collapse; width: 100%; table-layout: fixed\">"
+            . "<tr><td id=\"cell\" colspan=\"3\" rowspan=\"3\" style=\"padding: 3pt; border: 1pt solid; $cellStyle\">$content</td><td id=\"r1\" colspan=\"7\" style=\"border: 1pt solid\">one</td></tr>"
+            . "<tr><td id=\"r2\" colspan=\"7\" style=\"border: 1pt solid\">two<br>three<br>four</td></tr>"
+            . "<tr><td id=\"r3\" colspan=\"7\" style=\"border: 1pt solid\">five</td></tr>"
+            . "</table>";
+    }
+
+    public function testAbsoluteImageFillsThePaddingBoxOfARowspanCell(): void
+    {
+        $image = realpath(__DIR__ . "/../_files/jamaica.jpg");
+        [$boxes] = $this->layout($this->rowspanTable(
+            "<img id=\"image\" src=\"$image\" style=\"position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain\">",
+            "position: relative"
+        ));
+
+        $this->assertEqualsWithDelta($boxes["cell"]["x"] - 3.0, $boxes["image"]["x"], 0.01);
+        $this->assertEqualsWithDelta($boxes["cell"]["y"] - 3.0, $boxes["image"]["y"], 0.01);
+        $this->assertEqualsWithDelta($boxes["cell"]["w"] + 6.0, $boxes["image"]["w"], 0.01);
+        $this->assertEqualsWithDelta($boxes["cell"]["h"] + 6.0, $boxes["image"]["h"], 0.01);
+    }
+
+    public function testAbsoluteImageInARowspanCellLeavesTheRowHeightsAlone(): void
+    {
+        $image = realpath(__DIR__ . "/../_files/jamaica.jpg");
+        [$empty] = $this->layout($this->rowspanTable("", "position: relative"));
+        [$boxes] = $this->layout($this->rowspanTable(
+            "<img src=\"$image\" style=\"position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain\">",
+            "position: relative"
+        ));
+
+        foreach (["cell", "r1", "r2", "r3"] as $id) {
+            $this->assertEqualsWithDelta($empty[$id]["y"], $boxes[$id]["y"], 0.01, $id);
+            $this->assertEqualsWithDelta($empty[$id]["h"], $boxes[$id]["h"], 0.01, $id);
+        }
+    }
 }

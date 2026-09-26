@@ -335,7 +335,31 @@ class Table extends AbstractFrameReflower
             $height = max($height, $content_height);
         }
 
+        foreach ($frame->get_children() as $group) {
+            $this->_reflow_absolute_frames($group);
+        }
+
         return $height;
+    }
+
+    /**
+     * Lay out again the absolutely positioned frames whose containing block
+     * is a cell, now that the cells have their final heights.
+     *
+     * @param AbstractFrameDecorator $frame
+     */
+    protected function _reflow_absolute_frames(AbstractFrameDecorator $frame): void
+    {
+        $reflower = $frame->get_reflower();
+
+        if ($reflower instanceof TableCell) {
+            $reflower->reflow_absolute_frames_at_final_height();
+            return;
+        }
+
+        foreach ($frame->get_children() as $child) {
+            $this->_reflow_absolute_frames($child);
+        }
     }
 
     /**
