@@ -454,6 +454,26 @@ abstract class AbstractRenderer
             $repeat = "no-repeat";
         }
 
+        // A single copy of the image is drawn like in-flow image content: the
+        // original file is embedded once, and placed and clipped where the
+        // composed background would have shown it, instead of being resampled
+        // into a background at the document resolution
+        if ($repeat === "no-repeat"
+            && $this->_canvas instanceof CPDF
+            && in_array(strtolower($type), ["jpeg", "png", "gif", "webp", "bmp"], true)
+        ) {
+            $this->_canvas->clipping_rectangle($x, $y, min($width, $box_width), min($height, $box_height));
+            $this->_canvas->image(
+                $img,
+                $x + ($bg_x * 72) / $dpi,
+                $y + ($bg_y * 72) / $dpi,
+                ($img_w * 72) / $dpi,
+                ($img_h * 72) / $dpi
+            );
+            $this->_canvas->clipping_end();
+            return;
+        }
+
         // Avoid rendering identical background-image variants multiple times
         // This is not dependent of background color of box! .'_'.(is_array($bg_color) ? $bg_color["hex"] : $bg_color)
         // Note: Here, bg_* are the start values, not end values after going through the tile loops!

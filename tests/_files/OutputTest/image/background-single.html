@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta charset="UTF-8">
+<style>
+@page {
+    size: 420pt 560pt;
+    margin: 20pt;
+}
+
+body {
+    font-family: DejaVu Sans;
+    font-size: 8pt;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    margin-bottom: 10pt;
+}
+
+td {
+    border: 0.6pt solid #004054;
+    padding: 3pt;
+    height: 60pt;
+}
+
+.cover {
+    background-size: cover;
+    background-position: center;
+}
+
+.anchor {
+    background-size: cover;
+}
+
+.contain {
+    background-size: contain;
+    background-position: center center;
+    background-repeat: no-repeat;
+}
+
+.fixed {
+    background-size: 40pt auto;
+    background-position: right bottom;
+    background-repeat: no-repeat;
+}
+
+.tile {
+    background-image: url("../../red-dot.png");
+    background-size: 12pt 12pt;
+}
+
+.round {
+    border: 3pt solid #c33;
+    border-radius: 12pt;
+    background-color: #eee;
+}
+
+.photo {
+    background-image: url("../../jamaica.jpg");
+}
+
+.transparent {
+    background-image: url("../../transparent.png");
+    background-color: #fd8;
+}
+</style>
+</head>
+
+<body>
+    <table>
+        <tr><td class="photo cover"></td><td class="photo anchor"></td><td class="photo contain"></td></tr>
+        <tr><td class="photo fixed"></td><td class="tile"></td><td class="photo contain" rowspan="2"></td></tr>
+        <tr><td colspan="2" style="height: auto">A row with a long text wrapping over several lines, so that the cell spanning it and the row above gets its background on its final height, a row with a long text wrapping over several lines.</td></tr>
+        <tr><td class="photo cover round"></td><td class="photo contain round"></td><td class="photo fixed round"></td></tr>
+    </table>
+    <table>
+        <tr><td class="transparent cover"></td><td class="transparent contain"></td><td class="transparent fixed"></td></tr>
+    </table>
+</body>
+
+</html>
