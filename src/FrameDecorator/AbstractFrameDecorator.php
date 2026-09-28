@@ -179,6 +179,10 @@ abstract class AbstractFrameDecorator extends Frame
             $deco->trailingWs = $this->trailingWs;
         }
 
+        if ($this->has_layout_state()) {
+            $deco->mark_layout_state();
+        }
+
         return $deco;
     }
 
@@ -205,6 +209,10 @@ abstract class AbstractFrameDecorator extends Frame
 
         if ($this instanceof Text) {
             $deco->trailingWs = $this->trailingWs;
+        }
+
+        if ($this->has_layout_state()) {
+            $deco->mark_layout_state();
         }
 
         foreach ($this->get_children() as $child) {
@@ -238,6 +246,16 @@ abstract class AbstractFrameDecorator extends Frame
 
     function reset()
     {
+        // A frame without layout state has not been laid out since it was
+        // created or last reset, and neither have its descendants: there is
+        // nothing to reset but the parent lookups, as it may have been moved
+        if (!$this->has_layout_state()) {
+            $this->_cached_parent = null;
+            $this->_block_parent = null;
+            $this->_positioned_parent = null;
+            return;
+        }
+
         $this->_frame->reset();
         $this->_reflower->reset();
         $this->reset_generated_content();
@@ -255,6 +273,8 @@ abstract class AbstractFrameDecorator extends Frame
         foreach ($this->get_children() as $child) {
             $child->reset();
         }
+
+        $this->clear_layout_state();
     }
 
     /**
@@ -394,6 +414,21 @@ abstract class AbstractFrameDecorator extends Frame
     public function set_style(Style $style): void
     {
         $this->_frame->set_style($style);
+    }
+
+    public function has_layout_state(): bool
+    {
+        return $this->_frame->has_layout_state();
+    }
+
+    public function mark_layout_state(): void
+    {
+        $this->_frame->mark_layout_state();
+    }
+
+    public function clear_layout_state(): void
+    {
+        $this->_frame->clear_layout_state();
     }
 
     function set_containing_block($x = null, $y = null, $w = null, $h = null)
@@ -669,6 +704,8 @@ abstract class AbstractFrameDecorator extends Frame
             $p = $p->get_parent();
         }
 
+        $this->mark_layout_state();
+
         return $this->_block_parent = $p;
     }
 
@@ -694,6 +731,8 @@ abstract class AbstractFrameDecorator extends Frame
         if (!$p) {
             $p = $this->_root;
         }
+
+        $this->mark_layout_state();
 
         return $this->_positioned_parent = $p;
     }
@@ -931,6 +970,7 @@ abstract class AbstractFrameDecorator extends Frame
         // Uncomment this to see the frames before they're laid out, instead of
         // during rendering.
         //echo $this->_frame; flush();
+        $this->mark_layout_state();
         $this->_reflower->reflow($block);
     }
 

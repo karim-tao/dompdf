@@ -455,6 +455,8 @@ class Text extends AbstractFrameReflower
 
     public function get_min_max_width(): array
     {
+        $this->_frame->mark_layout_state();
+
         $fontMetrics = $this->getFontMetrics();
         $frame = $this->_frame;
         $style = $frame->get_style();

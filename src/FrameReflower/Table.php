@@ -599,6 +599,8 @@ class Table extends AbstractFrameReflower
             return $this->_min_max_cache;
         }
 
+        $this->_frame->mark_layout_state();
+
         $style = $this->_frame->get_style();
         $cellmap = $this->_frame->get_cellmap();
 

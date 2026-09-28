@@ -749,6 +749,8 @@ class Cellmap
      */
     public function add_frame(Frame $frame): void
     {
+        $frame->mark_layout_state();
+
         $style = $frame->get_style();
         $display = $style->display;
 

@@ -132,6 +132,16 @@ class Frame
     protected $_is_cache = [];
 
     /**
+     * Whether the frame holds layout state: it has been laid out, or given
+     * layout values, since it was created or last reset. The ancestors of a
+     * frame with layout state have layout state too, so that a reset can skip
+     * a frame without it along with its descendants.
+     *
+     * @var bool
+     */
+    protected $has_layout_state = false;
+
+    /**
      * Tells whether the frame was already pushed to the next page
      *
      * @var bool
@@ -277,6 +287,38 @@ class Frame
 
         $this->_style = null;
         unset($this->_style);
+    }
+
+    /**
+     * Whether the frame holds layout state, i.e. whether it needs a reset
+     * before it is laid out again.
+     *
+     * @return bool
+     */
+    public function has_layout_state(): bool
+    {
+        return $this->has_layout_state;
+    }
+
+    /**
+     * Record that the frame holds layout state, and so its ancestors.
+     */
+    public function mark_layout_state(): void
+    {
+        $frame = $this;
+
+        while ($frame !== null && !$frame->has_layout_state) {
+            $frame->has_layout_state = true;
+            $frame = $frame->_parent;
+        }
+    }
+
+    /**
+     * Record that the layout state of the frame has been reset.
+     */
+    public function clear_layout_state(): void
+    {
+        $this->has_layout_state = false;
     }
 
     /**
@@ -679,6 +721,10 @@ class Frame
      */
     public function set_containing_block($x = null, $y = null, $w = null, $h = null)
     {
+        if (!$this->has_layout_state) {
+            $this->mark_layout_state();
+        }
+
         if (is_array($x)) {
             list($x, $y, $w, $h) = [
                 $x["x"] ?? null,
@@ -711,6 +757,10 @@ class Frame
      */
     public function set_position($x = null, $y = null)
     {
+        if (!$this->has_layout_state) {
+            $this->mark_layout_state();
+        }
+
         if (is_array($x)) {
             list($x, $y) = [$x["x"], $x["y"]];
         }
@@ -937,6 +987,11 @@ class Frame
         }
 
         $child->_parent = $this;
+
+        if ($child->has_layout_state) {
+            $this->mark_layout_state();
+        }
+
         $decorator = $child->get_decorator();
         // force an update to the cached parent
         if ($decorator !== null) {
@@ -974,6 +1029,11 @@ class Frame
         }
 
         $child->_parent = $this;
+
+        if ($child->has_layout_state) {
+            $this->mark_layout_state();
+        }
+
         $decorator = $child->get_decorator();
         // force an update to the cached parent
         if ($decorator !== null) {
@@ -1031,6 +1091,11 @@ class Frame
         }
 
         $new_child->_parent = $this;
+
+        if ($new_child->has_layout_state) {
+            $this->mark_layout_state();
+        }
+
         $decorator = $new_child->get_decorator();
         // force an update to the cached parent
         if ($decorator !== null) {
@@ -1089,6 +1154,11 @@ class Frame
         }
 
         $new_child->_parent = $this;
+
+        if ($new_child->has_layout_state) {
+            $this->mark_layout_state();
+        }
+
         $decorator = $new_child->get_decorator();
         // force an update to the cached parent
         if ($decorator !== null) {

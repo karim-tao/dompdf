@@ -199,6 +199,7 @@ abstract class AbstractFrameReflower
             $b = $this->get_collapsed_margin_length($b, $n_t);
             $style->set_used("margin_bottom", $b);
             $n_style->set_used("margin_top", 0.0);
+            $n->mark_layout_state();
         }
 
         // Collapse our first child's margin, if there is no border or padding
@@ -225,6 +226,7 @@ abstract class AbstractFrameReflower
                 $t = $this->get_collapsed_margin_length($t, $f_t);
                 $style->set_used("margin_top", $t);
                 $f_style->set_used("margin_top", 0.0);
+                $f->mark_layout_state();
             }
         }
 
@@ -252,6 +254,7 @@ abstract class AbstractFrameReflower
                 $b = $this->get_collapsed_margin_length($b, $l_b);
                 $style->set_used("margin_bottom", $b);
                 $l_style->set_used("margin_bottom", 0.0);
+                $l->mark_layout_state();
             }
         }
     }
@@ -507,6 +510,8 @@ abstract class AbstractFrameReflower
         if (!is_null($this->_min_max_cache)) {
             return $this->_min_max_cache;
         }
+
+        $this->_frame->mark_layout_state();
 
         $style = $this->_frame->get_style();
         [$min, $max] = $this->get_min_max_content_width();

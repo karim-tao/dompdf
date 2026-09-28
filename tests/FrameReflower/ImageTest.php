@@ -153,6 +153,7 @@ class ImageTest extends TestCase
         $frame->shouldReceive('resample')->with($imgHeight)->andReturn(($imgHeight * 72) / 75);
         $frame->shouldReceive('get_intrinsic_dimensions')->andReturn([$imgWidth, $imgHeight]);
         $frame->shouldReceive('get_containing_block')->andReturn($containingBlock);
+        $frame->shouldReceive('mark_layout_state');
 
         return $frame;
     }
