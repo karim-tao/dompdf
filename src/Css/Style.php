@@ -1472,7 +1472,7 @@ class Style
                     } else {
                         $this->_props[$prop] = $parent_val;
                         $this->_props_computed[$prop] = $parent_val;
-                        $this->_props_used[$prop] = null;
+                        unset($this->_props_used[$prop]);
                     }
                 }
             }
@@ -1488,7 +1488,7 @@ class Style
                     } else {
                         $this->_props[$prop] = $parent_val;
                         $this->_props_computed[$prop] = $parent_val;
-                        $this->_props_used[$prop] = null;
+                        unset($this->_props_used[$prop]);
                     }
                 } else {
                     if ($this->is_custom_property($prop)) {
@@ -1535,7 +1535,7 @@ class Style
                 && \array_key_exists($prop, $style->_props_computed)
             ) {
                 $this->_props_computed[$prop] = $style->_props_computed[$prop];
-                $this->_props_used[$prop] = null;
+                unset($this->_props_used[$prop]);
             } else {
                 unset($this->_props_computed[$prop]);
                 unset($this->_props_used[$prop]);
@@ -1734,7 +1734,7 @@ class Style
 
             $this->_props[$prop] = $val;
             $this->_props_computed[$prop] = $computed;
-            $this->_props_used[$prop] = null;
+            unset($this->_props_used[$prop]);
 
             //TODO: this should be a directed dependency map
             if ($this->is_custom_property($prop) && !\in_array($prop, $this->_prop_stack, true)) {
