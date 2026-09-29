@@ -321,6 +321,22 @@ class Stylesheet
     }
 
     /**
+     * Prepare a style applied to a frame to be copied for the frames with the
+     * same parent style and declarations.
+     *
+     * @param Style $style
+     */
+    protected function prepare_style_for_copies(Style $style): void
+    {
+        // Decorating the frame reads these; reading them now fills them in
+        // before the copies are made, rather than in each copy
+        $style->__get("display");
+        $style->__get("position");
+
+        $style->compute_specified();
+    }
+
+    /**
      * Add a new Style object to the stylesheet
      *
      * The style's origin is changed to the current origin of the stylesheet.
@@ -1081,14 +1097,18 @@ class Stylesheet
 
         // Now create the styles and assign them to the appropriate frames. (We
         // iterate over the tree using an implicit FrameTree iterator.)
+        //
+        // The style of a frame only depends on the style of its parent and on
+        // the declarations applied to it. A long document repeats the same few
+        // of them: a frame whose parent style and declarations are those of an
+        // earlier frame gets a copy of its style, which shares its values
+        // rather than computing them again.
         $root_flg = false;
+        $templates = [];
+        $recipes = [];
         foreach ($tree as $frame) {
             // Helpers::pre_r($frame->get_node()->nodeName . ":");
-            if (!$root_flg && $this->_page_styles["base"]) {
-                $style = $this->_page_styles["base"];
-            } else {
-                $style = $this->create_style();
-            }
+            $is_root = !$root_flg && $this->_page_styles["base"];
 
             // Find nearest DOMElement parent
             $p = $frame;
@@ -1098,20 +1118,45 @@ class Stylesheet
                 }
             }
 
+            // The recipe of the style starts with the one of the parent style
+            $parent_style = $p ? $p->get_style() : null;
+            $recipe = ($p ? $recipes[$p->get_id()] : "") . "/";
+
             // Styles can only be applied directly to DOMElements; anonymous
             // frames inherit from their parent
             if ($frame->get_node()->nodeType !== XML_ELEMENT_NODE) {
-                $style->inherit($p ? $p->get_style() : null);
+                $recipe .= "-";
+
+                if (isset($templates[$recipe]) && !$is_root) {
+                    [$recipe_id, $template] = $templates[$recipe];
+                    $style = $template->copy_for_parent($parent_style);
+                } else {
+                    $style = $is_root ? $this->_page_styles["base"] : $this->create_style();
+                    $style->inherit($parent_style);
+                    $this->prepare_style_for_copies($style);
+                    $recipe_id = count($templates);
+                    $templates[$is_root ? "root" : $recipe] = [$recipe_id, $style];
+                }
+
+                $recipes[$frame->get_id()] = $recipe_id;
                 $frame->set_style($style);
                 continue;
             }
 
             $id = $frame->get_id();
 
+            /** @var array<int, array<Style|string>> $applied_styles */
+            $applied_styles = $styles[$id] ?? [];
+
+            // The style attributes are only parsed for a style that is not a
+            // copy: keep where they go among the applied styles
+            $attributes = [];
+
             // Handle HTML 4.0 attributes
             AttributeTranslator::translate_attributes($frame);
             if (($str = $frame->get_node()->getAttribute(AttributeTranslator::$_style_attr)) !== "") {
-                $styles[$id][self::SPEC_NON_CSS][] = $this->_parse_properties($str);
+                $applied_styles[self::SPEC_NON_CSS][] = $str;
+                $attributes[] = [self::SPEC_NON_CSS, count($applied_styles[self::SPEC_NON_CSS]) - 1];
             }
 
             // Locate any additional style attributes
@@ -1120,17 +1165,39 @@ class Stylesheet
                 $str = preg_replace("'/\*.*?\*/'si", "", $str);
 
                 $spec = $this->specificity("!attr", self::ORIG_AUTHOR);
-                $styles[$id][$spec][] = $this->_parse_properties($str);
+                $applied_styles[$spec][] = $str;
+                $attributes[] = [$spec, count($applied_styles[$spec]) - 1];
+            }
+
+            // Sort by specificity
+            ksort($applied_styles);
+
+            // The declarations in the order they apply: the styles of the
+            // stylesheet by identity, the style attributes by content
+            foreach ($applied_styles as $arr) {
+                foreach ($arr as $s) {
+                    $recipe .= \is_string($s)
+                        ? "\"" . \strlen($s) . ":$s"
+                        : "#" . spl_object_id($s);
+                }
+            }
+
+            if (isset($templates[$recipe]) && !$is_root && !$DEBUGCSS) {
+                [$recipe_id, $template] = $templates[$recipe];
+                $style = $template->copy_for_parent($parent_style);
+                $recipes[$id] = $recipe_id;
+                $frame->set_style($style);
+                continue;
+            }
+
+            $style = $is_root ? $this->_page_styles["base"] : $this->create_style();
+
+            foreach ($attributes as [$spec, $i]) {
+                $applied_styles[$spec][$i] = $this->_parse_properties($applied_styles[$spec][$i]);
             }
 
             // Grab the applicable styles
-            if (isset($styles[$id])) {
-
-                /** @var array[][] $applied_styles */
-                $applied_styles = $styles[$id];
-
-                // Sort by specificity
-                ksort($applied_styles);
+            if ($applied_styles !== []) {
 
                 if ($DEBUGCSS) {
                     $debug_nodename = $frame->get_node()->nodeName;
@@ -1211,7 +1278,7 @@ class Stylesheet
                 print "  ]\n";
             }
 
-            $style->inherit($p ? $p->get_style() : null);
+            $style->inherit($parent_style);
 
             if ($DEBUGCSS) {
                 print "  DomElementStyle [\n";
@@ -1221,9 +1288,12 @@ class Stylesheet
             }
 
             $style->clear_important();
+            $this->prepare_style_for_copies($style);
+            $recipes[$id] = count($templates);
+            $templates[$is_root ? "root" : $recipe] = [$recipes[$id], $style];
             $frame->set_style($style);
 
-            if (!$root_flg && $this->_page_styles["base"]) {
+            if ($is_root) {
                 $root_flg = true;
 
                 // set the page width, height, and orientation based on the parsed page style

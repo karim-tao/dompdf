@@ -1556,6 +1556,44 @@ class Style
     }
 
     /**
+     * Compute the values of the specified properties.
+     *
+     * The styles inheriting from this one read the computed values of its
+     * properties, also of the ones they set to `inherit`. Computing them in
+     * advance leaves the values of the style unchanged from then on, so that
+     * its copies keep sharing them.
+     */
+    public function compute_specified(): void
+    {
+        foreach ($this->_props as $prop => $val) {
+            if (!\array_key_exists($prop, $this->_props_computed)
+                && !isset(self::$_props_shorthand[$prop])
+            ) {
+                $this->computed($prop);
+            }
+        }
+    }
+
+    /**
+     * Return a copy of the style for a frame with the same declarations, whose
+     * parent has a style with the same values.
+     *
+     * PHP arrays are copied on write: the copy shares the values of the style
+     * until either of them changes.
+     *
+     * @param Style|null $parent The style of the parent of the frame.
+     *
+     * @return Style
+     */
+    public function copy_for_parent(?Style $parent): Style
+    {
+        $style = clone $this;
+        $style->parent_style = $parent;
+
+        return $style;
+    }
+
+    /**
      * Clear information about important declarations after the style has been
      * finalized during stylesheet loading.
      */

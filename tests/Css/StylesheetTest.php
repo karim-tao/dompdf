@@ -112,4 +112,78 @@ CSS
         $this->assertSame("blob://", substr($sheet->resolve_url($styles["div"][0]->get_specified("background_image")), 0, 7));
         $this->assertSame($dataUri, $styles["div"][0]->background_image);
     }
+
+    /**
+     * Render the document and return the styles of the elements with an id,
+     * as applied before the layout.
+     *
+     * @return Style[]
+     */
+    private function stylesById(string $html): array
+    {
+        $dompdf = new Dompdf();
+        $styles = [];
+        $dompdf->setCallbacks([[
+            "event" => "begin_page_reflow",
+            "f" => function () use ($dompdf, &$styles) {
+                if ($styles !== []) {
+                    return;
+                }
+                foreach ($dompdf->getTree() as $frame) {
+                    $node = $frame->get_node();
+                    if ($node instanceof \DOMElement && $node->getAttribute("id") !== "") {
+                        $styles[$node->getAttribute("id")] = $frame->get_style();
+                    }
+                }
+            }
+        ]]);
+        $dompdf->loadHtml($html);
+        $dompdf->render();
+
+        return $styles;
+    }
+
+    public function testRepeatedStylesAreCopies(): void
+    {
+        $styles = $this->stylesById(<<<HTML
+<html>
+<head><style>.a span { font-size: 1.5em; }</style></head>
+<body>
+<div class="a"><span id="s1">a</span></div>
+<div class="a" style="font-size: 20pt"><span id="s2">b</span></div>
+<div class="a"><span id="s3">c</span></div>
+<p id="p1" style="color: red">x</p>
+<p id="p2" style="color: blue">y</p>
+<p id="p3" style="color: red">z</p>
+<table>
+<tr id="r1" style="background-color: red"><td id="c1">1</td></tr>
+<tr id="r2"><td id="c2">2</td></tr>
+</table>
+</body>
+</html>
+HTML
+        );
+
+        // Same declarations and parent style
+        $this->assertNotSame($styles["s1"], $styles["s3"]);
+        $this->assertSame(18.0, $styles["s1"]->font_size);
+        $this->assertSame(18.0, $styles["s3"]->font_size);
+
+        // Same declarations, different parent style
+        $this->assertSame(30.0, $styles["s2"]->font_size);
+
+        // Different style attributes
+        $this->assertSame("#ff0000FF", $styles["p1"]->color["hex"]);
+        $this->assertSame("#0000ffFF", $styles["p2"]->color["hex"]);
+        $this->assertSame("#ff0000FF", $styles["p3"]->color["hex"]);
+
+        // `background: inherit` on table cells
+        $this->assertSame("#ff0000FF", $styles["c1"]->background_color["hex"]);
+        $this->assertSame("transparent", $styles["c2"]->background_color);
+
+        // A copy changes on its own
+        $styles["s1"]->set_used("width", 10.0);
+        $this->assertSame(10.0, $styles["s1"]->width);
+        $this->assertSame("auto", $styles["s3"]->width);
+    }
 }
