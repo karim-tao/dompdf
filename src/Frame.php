@@ -91,7 +91,31 @@ class Frame
     protected $_next_sibling;
 
     /**
-     * This frame's containing block (used in layout): array(x, y, w, h)
+     * The containing block and position of a frame that has not been laid
+     * out. Every frame starts from these arrays and only gets its own copy
+     * once a value is set, so that the frames of the pages not laid out yet
+     * take no memory for them.
+     */
+    private const NO_CONTAINING_BLOCK = [
+        "x" => null, "y" => null, "w" => null, "h" => null,
+        0 => null, 1 => null, 2 => null, 3 => null,
+    ];
+
+    private const NO_POSITION = [
+        "x" => null, "y" => null,
+        0 => null, 1 => null,
+    ];
+
+    /**
+     * The first entry of the cache of the `is_*()` methods, shared in the
+     * same way until more entries are added.
+     */
+    private const IS_TEXT_NODE = ["text_node" => true];
+    private const IS_NOT_TEXT_NODE = ["text_node" => false];
+
+    /**
+     * This frame's containing block (used in layout): array(x, y, w, h),
+     * indexed both by name and by number
      *
      * @var float[]
      */
@@ -174,25 +198,9 @@ class Frame
 
         $this->_style = null;
 
-        $this->_containing_block = [
-            "x" => null,
-            "y" => null,
-            "w" => null,
-            "h" => null,
-        ];
-
-        $this->_containing_block[0] =& $this->_containing_block["x"];
-        $this->_containing_block[1] =& $this->_containing_block["y"];
-        $this->_containing_block[2] =& $this->_containing_block["w"];
-        $this->_containing_block[3] =& $this->_containing_block["h"];
-
-        $this->_position = [
-            "x" => null,
-            "y" => null,
-        ];
-
-        $this->_position[0] =& $this->_position["x"];
-        $this->_position[1] =& $this->_position["y"];
+        $this->_containing_block = self::NO_CONTAINING_BLOCK;
+        $this->_position = self::NO_POSITION;
+        $this->_is_cache = $node->nodeName === "#text" ? self::IS_TEXT_NODE : self::IS_NOT_TEXT_NODE;
 
         $this->_opacity = 1.0;
         $this->_decorator = null;
@@ -335,13 +343,8 @@ class Frame
      */
     public function reset()
     {
-        $this->_position["x"] = null;
-        $this->_position["y"] = null;
-
-        $this->_containing_block["x"] = null;
-        $this->_containing_block["y"] = null;
-        $this->_containing_block["w"] = null;
-        $this->_containing_block["h"] = null;
+        $this->_position = self::NO_POSITION;
+        $this->_containing_block = self::NO_CONTAINING_BLOCK;
 
         $this->_style->reset();
     }
@@ -744,19 +747,19 @@ class Frame
         }
 
         if (is_numeric($x)) {
-            $this->_containing_block["x"] = $x;
+            $this->_containing_block["x"] = $this->_containing_block[0] = $x;
         }
 
         if (is_numeric($y)) {
-            $this->_containing_block["y"] = $y;
+            $this->_containing_block["y"] = $this->_containing_block[1] = $y;
         }
 
         if (is_numeric($w)) {
-            $this->_containing_block["w"] = $w;
+            $this->_containing_block["w"] = $this->_containing_block[2] = $w;
         }
 
         if (is_numeric($h) || $h === null) {
-            $this->_containing_block["h"] = $h;
+            $this->_containing_block["h"] = $this->_containing_block[3] = $h;
         }
     }
 
@@ -775,11 +778,11 @@ class Frame
         }
 
         if (is_numeric($x)) {
-            $this->_position["x"] = $x;
+            $this->_position["x"] = $this->_position[0] = $x;
         }
 
         if (is_numeric($y)) {
-            $this->_position["y"] = $y;
+            $this->_position["y"] = $this->_position[1] = $y;
         }
     }
 
