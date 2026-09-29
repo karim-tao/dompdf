@@ -120,6 +120,18 @@ class FrameTree implements IteratorAggregate
     }
 
     /**
+     * Forgets the frames registered by id
+     *
+     * The registry is only needed to insert generated content while the
+     * styles are applied. Once it is cleared, the frames of a page are freed
+     * as soon as the page is rendered and disposed of.
+     */
+    public function clear_registry(): void
+    {
+        $this->_registry = [];
+    }
+
+    /**
      * Returns a post-order iterator for all frames in the tree
      *
      * @deprecated Iterate the tree directly instead

@@ -74,6 +74,16 @@ class Table extends AbstractFrameDecorator
         $this->_footers = [];
     }
 
+    public function dispose($recursive = false)
+    {
+        parent::dispose($recursive);
+
+        // The cellmap refers back to the table
+        $this->_cellmap = null;
+        $this->_headers = [];
+        $this->_footers = [];
+    }
+
     public function reset()
     {
         parent::reset();

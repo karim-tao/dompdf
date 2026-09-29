@@ -151,6 +151,13 @@ abstract class AbstractFrameDecorator extends Frame
 
         $this->_reflower = null;
         unset($this->_reflower);
+
+        $this->_cached_parent = null;
+        $this->_block_parent = null;
+        $this->_positioned_parent = null;
+
+        // The line box refers back to the frame
+        $this->_containing_line = null;
     }
 
     /**

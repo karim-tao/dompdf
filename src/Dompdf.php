@@ -735,6 +735,7 @@ class Dompdf
         $this->processHtml();
 
         $this->css->apply_styles($this->tree);
+        $this->tree->clear_registry();
 
         // @page style rules : size, margins
         $pageStyles = $this->css->get_page_styles();

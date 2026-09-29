@@ -54,6 +54,15 @@ class Block extends AbstractFrameDecorator
         $this->dangling_markers = [];
     }
 
+    function dispose($recursive = false)
+    {
+        parent::dispose($recursive);
+
+        // The line boxes refer back to the block
+        $this->_line_boxes = [];
+        $this->dangling_markers = [];
+    }
+
     function reset()
     {
         parent::reset();

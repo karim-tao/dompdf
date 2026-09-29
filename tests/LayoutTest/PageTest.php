@@ -122,4 +122,83 @@ HTML
             $this->assertSame($pageNumber, $elementPages[$class] ?? 0);
         }
     }
+
+    public function testFramesOfRenderedPagesAreFreed(): void
+    {
+        $rows = str_repeat("<tr><td>Cell</td><td style=\"background-color: red\">Cell</td></tr>", 200);
+        $dompdf = new Dompdf();
+        $dompdf->loadHtml(<<<HTML
+<html>
+<head><style>
+    .fixed { position: fixed; top: 0; }
+    td { border: 1px solid; }
+</style></head>
+<body>
+<div class="fixed">Fixed</div>
+<table style="border-collapse: collapse"><thead><tr><td>Head</td></tr></thead>$rows</table>
+</body>
+</html>
+HTML
+        );
+
+        // Frames only held in reference cycles are not freed while the
+        // garbage collector is disabled
+        $frames = class_exists(\WeakMap::class) ? new \WeakMap() : null;
+        $ids = [];
+        $page = 0;
+        $dompdf->setCallbacks([[
+            "event" => "end_page_render",
+            "f" => function (AbstractFrameDecorator $frame) use ($frames, &$ids, &$page) {
+                if (++$page > 1) {
+                    return;
+                }
+
+                foreach ($frame->get_children() as $child) {
+                    $this->collectFrames($child, $frames, $ids);
+                }
+            }
+        ]]);
+
+        $gcEnabled = gc_enabled();
+        gc_disable();
+
+        try {
+            $dompdf->render();
+        } finally {
+            if ($gcEnabled) {
+                gc_enable();
+            }
+        }
+
+        $this->assertGreaterThan(2, $page);
+        $this->assertNotEmpty($ids);
+
+        foreach ($ids as $id) {
+            $this->assertNull($dompdf->getTree()->get_frame($id));
+        }
+
+        if ($frames !== null) {
+            $this->assertCount(0, $frames);
+        }
+    }
+
+    /**
+     * @param AbstractFrameDecorator $frame
+     * @param \WeakMap|null          $frames
+     * @param array                  $ids
+     */
+    private function collectFrames(AbstractFrameDecorator $frame, $frames, array &$ids): void
+    {
+        $ids[] = $frame->get_id();
+
+        if ($frames !== null) {
+            $frames[$frame] = true;
+            $frames[$frame->get_frame()] = true;
+            $frames[$frame->get_style()] = true;
+        }
+
+        foreach ($frame->get_children() as $child) {
+            $this->collectFrames($child, $frames, $ids);
+        }
+    }
 }

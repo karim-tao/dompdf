@@ -287,6 +287,15 @@ class Frame
 
         $this->_style = null;
         unset($this->_style);
+
+        // Drop the links left to the other frames and to the line box, which
+        // otherwise keep the disposed frames in reference cycles until the
+        // garbage collector runs
+        $this->_parent = null;
+        $this->_prev_sibling = null;
+        $this->_next_sibling = null;
+        $this->_containing_line = null;
+        $this->_decorator = null;
     }
 
     /**
