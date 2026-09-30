@@ -196,6 +196,14 @@ HTML
 ,
                 200.0,
                 100.0
+            ],
+            "svg with dimensions in cm" => [
+                <<<HTML
+<img src="../_files/rectangle-cm.svg">
+HTML
+,
+                10 * 72 / 2.54,
+                5 * 72 / 2.54
             ]
         ];
     }

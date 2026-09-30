@@ -829,6 +829,14 @@ class Helpers
 
         $parse_result = @getimagesize($filename);
         $width = $height = $type = $typeconst = $mime = $channels = $bits = $bytes = null;
+
+        // Since PHP 8.5, getimagesize() reads SVG documents, but it returns
+        // their width and height without converting the unit. Read them with
+        // the SVG library instead, as with the earlier versions
+        if ($parse_result !== false && defined('IMAGETYPE_SVG') && $parse_result[2] === IMAGETYPE_SVG) {
+            $parse_result = false;
+        }
+
         if ($parse_result !== false) {
             [$width, $height, $typeconst] = $parse_result;
             $type = $types[$typeconst] ?? null;
