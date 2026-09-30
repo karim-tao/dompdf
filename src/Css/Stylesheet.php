@@ -1178,7 +1178,7 @@ class Stylesheet
                 foreach ($arr as $s) {
                     $recipe .= \is_string($s)
                         ? "\"" . \strlen($s) . ":$s"
-                        : "#" . spl_object_id($s);
+                        : "#" . spl_object_hash($s);
                 }
             }
 
