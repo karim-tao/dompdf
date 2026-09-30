@@ -8,6 +8,7 @@ namespace Dompdf\Renderer;
 
 use Dompdf\Adapter\CPDF;
 use Dompdf\Frame;
+use Dompdf\VerticalFontMetrics;
 use Dompdf\FrameDecorator\Text as TextFrameDecorator;
 
 /**
@@ -195,7 +196,7 @@ class Text extends AbstractRenderer
                 continue;
             }
 
-            foreach (mb_str_split($run, 1, "UTF-8") as $char) {
+            foreach (VerticalFontMetrics::chars($run) as $char) {
                 $width = $fontMetrics->getTextWidth($char, $font, $size);
                 $this->_canvas->text($x + $baseline, $y + ($height + $width) / 2 - $baseline, $char, $font, $size, $color, 0.0, 0.0, -90);
                 $x += $verticalFontMetrics->getUprightAdvance($font, $size, $letter_spacing);

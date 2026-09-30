@@ -91,7 +91,7 @@ class VerticalFontMetrics extends FontMetrics
             return true;
         }
 
-        $codePoint = mb_ord($char, "UTF-8");
+        $codePoint = Helpers::uniord($char, "UTF-8");
 
         foreach (self::UPRIGHT_RANGES as [$first, $last]) {
             if ($codePoint < $first) {
@@ -107,6 +107,21 @@ class VerticalFontMetrics extends FontMetrics
     }
 
     /**
+     * Split a text into its characters.
+     *
+     * @param string $text
+     * @return string[]
+     */
+    public static function chars(string $text): array
+    {
+        if (function_exists("mb_str_split")) {
+            return mb_str_split($text, 1, "UTF-8");
+        }
+
+        return preg_split("//u", $text, -1, PREG_SPLIT_NO_EMPTY);
+    }
+
+    /**
      * Split a text into runs of characters sharing the same orientation.
      *
      * @param string $text
@@ -116,7 +131,7 @@ class VerticalFontMetrics extends FontMetrics
     {
         $runs = [];
 
-        foreach (mb_str_split($text, 1, "UTF-8") as $char) {
+        foreach (self::chars($text) as $char) {
             $upright = $this->isUpright($char);
 
             if ($runs !== [] && $runs[count($runs) - 1][1] === $upright) {
